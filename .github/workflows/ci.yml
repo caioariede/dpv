@@ -56,9 +56,9 @@ jobs:
         with:
           submodules: recursive
 
-      - run: brew install pyenv
-        if: matrix.installer == "pyenv"
-      - run: pyenv install "${{ matrix.python }}"
-        if: matrix.installer == "pyenv"
+      - if: matrix.installer == "pyenv"
+        run: |
+          brew install pyenv
+          pyenv install "${{ matrix.python }}"
 
       - run: ./test/run_test.sh "${{ matrix.installer }}"
