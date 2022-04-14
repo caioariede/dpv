@@ -17,8 +17,8 @@ setup() {
     ERR_CANNOT_DETERMINE_PYTHON_VERSION=2
     export ERR_CANNOT_DETERMINE_PYTHON_VERSION
 
-    rm -r "$DPV_DIR" || true
-    rm -r "$PRJ_DIR" || true
+    rm -rf "$DPV_DIR"
+    rm -rf "$PRJ_DIR"
     mkdir -p "$DPV_DIR"
     mkdir -p "$PRJ_DIR"
 
