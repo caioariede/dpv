@@ -61,4 +61,7 @@ jobs:
           pyenv install "${{ matrix.python }}"
         if: matrix.installer == 'pyenv'
 
+      - run: brew install "python@${{ matrix.python }}"
+        if: matrix.installer == 'homebrew'
+
       - run: ./test/run_test.sh "${{ matrix.installer }}"
