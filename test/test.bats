@@ -9,8 +9,8 @@ setup() {
     # make executables in src/ visible to PATH
     PATH="$DIR/../src:$PATH"
 
-    DPV_DIR="/tmp/test_dpv"
-    PRJ_DIR="/tmp/test_dpv_proj"
+    DPV_DIR="$TMPDIR/test_dpv"
+    PRJ_DIR="$TMPDIR/test_dpv_proj"
     export DPV_DIR
     export PRJ_DIR
 
