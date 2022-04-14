@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: ursetto/pyenv-action@cache-fix
+      - uses: gabrielfalcao/pyenv-action@v9
         with:
           default: "${{ matrix.python }}"
 
