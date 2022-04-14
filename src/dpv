@@ -27,7 +27,7 @@ function cmd_usage() {
 	echo "  dpv where       - display the virtualenv directory"
 	echo "  dpv version     - display version"
 	echo "  dpv instrument  - instruments dpv"
-	echo "  dpv shell       - enters the virtualenv"
+	echo "  dpv run [cmd]   - runs command inside virtualenv [default: \$SHELL]"
 	echo
 	echo "  CTRL-D          - exits virtualenv"
 	echo
@@ -63,7 +63,7 @@ function cmd_list() {
 	esac
 }
 
-function cmd_shell() {
+function cmd_run() {
 	if [ ! -d "$VENV_DIR" ]; then
 		_load_config_vars
 		_load_python_vars
@@ -71,7 +71,7 @@ function cmd_shell() {
 		_persist
 	fi
 
-	_load_shell "$@"
+	_run_command "$@"
 }
 
 function cmd_persist() {
@@ -112,12 +112,12 @@ function __main() {
 		cmd_list "${2:--plain}"
 		;;
 
-	shell | "")
-        if [ "$#" -eq 1 ]; then
-            cmd_shell "$SHELL"
-        else
-            cmd_shell "${@:2}"
-        fi
+	run | "")
+		if [ "$#" -eq 1 ]; then
+			cmd_run "$SHELL"
+		else
+			cmd_run "${@:2}"
+		fi
 		;;
 
 	version | -v | --version)
@@ -159,7 +159,7 @@ function _error_handling() {
 	esac
 }
 
-function _load_shell() {
+function _run_command() {
 	if [ -n "${DPV_SHELL+x}" ]; then
 		exit 0
 	fi
@@ -230,11 +230,11 @@ function _plain_list() {
 }
 
 function _persist() {
-    true > "$CFG_VENVS_PERSIST_FILE"
+	true >"$CFG_VENVS_PERSIST_FILE"
 
-    while read -r path; do
-        printf "%s\t%s\n" "$(basename "$path")" "$path" >>"$CFG_VENVS_PERSIST_FILE"
-    done < <(compgen -G "$CFG_VENVS_DIR/*/*" || true)
+	while read -r path; do
+		printf "%s\t%s\n" "$(basename "$path")" "$path" >>"$CFG_VENVS_PERSIST_FILE"
+	done < <(compgen -G "$CFG_VENVS_DIR/*/*" || true)
 }
 
 function _install() {

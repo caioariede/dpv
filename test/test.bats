@@ -92,16 +92,16 @@ setup_runtime_txt() {
     assert_failure $ERR_CANNOT_DETERMINE_PYTHON_VERSION
 }
 
-@test "run shell command but cannot determine Python version" {
-    run dpv shell
+@test "run 'run' command but cannot determine Python version" {
+    run dpv run
 
     assert_failure $ERR_CANNOT_DETERMINE_PYTHON_VERSION
 }
 
-@test "run shell command with runtime.txt" {
+@test "run 'run' command with runtime.txt" {
     setup_runtime_txt
 
-    run dpv shell bash -c 'echo $DPV_SHELL'
+    run dpv run bash -c 'echo $DPV_SHELL'
 
     assert_success
     assert_output '1'
