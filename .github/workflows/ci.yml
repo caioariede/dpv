@@ -28,6 +28,7 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
+      - uses: textbook/git-checkout-submodule-action@master
       - uses: gabrielfalcao/pyenv-action@v9
         with:
           default: "${{ matrix.python }}"
