@@ -23,6 +23,8 @@ setup() {
     mkdir -p "$PRJ_DIR"
 
     cd "$PRJ_DIR"
+
+    export
 }
 
 setup_runtime_txt() {
