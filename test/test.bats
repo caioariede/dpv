@@ -2,27 +2,9 @@ setup() {
     load 'test_helper/bats-support/load'
     load 'test_helper/bats-assert/load'
 
-    # get the containing directory of this file
-    # use $BATS_TEST_FILENAME instead of ${BASH_SOURCE[0]} or $0,
-    # as those will point to the bats executable's location or the preprocessed file respectively
-    DIR="$( cd "$( dirname "$BATS_TEST_FILENAME" )" >/dev/null 2>&1 && pwd )"
-    # make executables in src/ visible to PATH
-    PATH="$DIR/../src:$PATH"
+    DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" >/dev/null 2>&1 && pwd)"
 
-    DPV_DIR="$BATS_TEST_TMPDIR/test_dpv"
-    PRJ_DIR="$BATS_TEST_TMPDIR/test_dpv_proj"
-    export DPV_DIR
-    export PRJ_DIR
-
-    ERR_CANNOT_DETERMINE_PYTHON_VERSION=2
-    export ERR_CANNOT_DETERMINE_PYTHON_VERSION
-
-    rm -rf "$DPV_DIR"
-    rm -rf "$PRJ_DIR"
-    mkdir -p "$DPV_DIR"
-    mkdir -p "$PRJ_DIR"
-
-    cd "$PRJ_DIR"
+    source "$DIR/helper.sh"
 }
 
 setup_runtime_txt() {
