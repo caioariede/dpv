@@ -20,7 +20,7 @@ set -e
 function cmd_usage() {
 	_load_config_vars
 
-	echo "dpv $CFG_VERSION [installation methods: $CFG_ALL_INSTALL_METHODS]"
+	echo "dpv $CFG_VERSION"
 	echo
 	echo "usage:"
 	echo "  dpv             - installs virtualenv for the current directory"
@@ -32,7 +32,6 @@ function cmd_usage() {
 	echo "  dpv run [cmd]   - runs command inside virtualenv [default: \$SHELL]"
 	echo
 	echo "  CTRL-D          - exits virtualenv"
-	echo
 
 }
 
@@ -44,15 +43,17 @@ function cmd_version() {
 function cmd_where() {
 	_load_config_vars
 	_load_python_vars
-	_where
+	echo "$VENV_DIR"
 }
 
 function cmd_instrument() {
 	# https://stackoverflow.com/a/13864829
 	if [ -n "${DPV_SHELL+x}" ]; then
+		DPV_INSTRUMENT=1
 		_load_config_vars
 		_load_python_vars
 		_print_venv_activate
+		unset DPV_INSTRUMENT
 	fi
 }
 
@@ -71,15 +72,9 @@ function cmd_run() {
 
 	if [ ! -d "$VENV_DIR" ]; then
 		_create_venv_if_not_exists
-		_persist
 	fi
 
 	_run_command "$@"
-}
-
-function cmd_persist() {
-	_load_config_vars
-	_persist
 }
 
 function cmd_install() {
@@ -127,10 +122,6 @@ function __main() {
 		cmd_version
 		;;
 
-	persist)
-		cmd_persist
-		;;
-
 	install)
 		cmd_install
 		;;
@@ -160,6 +151,10 @@ function _error_handling() {
 		;;
 
 	esac
+
+	if [ -n "${DPV_INSTRUMENT+x}" ]; then
+		_print_logs
+	fi
 }
 
 function _run_command() {
@@ -171,32 +166,30 @@ function _run_command() {
 }
 
 function _load_config_vars() {
+	CFG_LOG_FILE=$(mktemp -t "dpv_logs")
 	CFG_INSTALL_METHOD="${DPV_INSTALL_METHOD}"
-	CFG_ALL_INSTALL_METHODS=""
 
 	# https://stackoverflow.com/a/677212
 	if hash pyenv 2>/dev/null; then
-		CFG_ALL_INSTALL_METHODS+=" pyenv"
 		if [ "$CFG_INSTALL_METHOD" == "pyenv" ] || [ "$CFG_INSTALL_METHOD" == "" ]; then
-            CFG_INSTALL_METHOD="pyenv"
-			CFG_ALL_INSTALL_METHODS+="*"
+			CFG_INSTALL_METHOD="pyenv"
+			_log "- pyenv is installed (preferred)"
+		else
+			_log "- pyenv is installed but will not be used"
 		fi
 	fi
 	if hash brew 2>/dev/null; then
-		CFG_ALL_INSTALL_METHODS+=" homebrew"
 		if [ "$CFG_INSTALL_METHOD" == "homebrew" ] || [ "$CFG_INSTALL_METHOD" == "" ]; then
-            CFG_INSTALL_METHOD="homebrew"
-			CFG_ALL_INSTALL_METHODS+="*"
+			CFG_INSTALL_METHOD="homebrew"
+			_log "- homebrew is installed (preferred)"
+		else
+			_log "- homebrew is installed but will not be used"
 		fi
 	fi
-
-	# remove blank space from start
-	CFG_ALL_INSTALL_METHODS="${CFG_ALL_INSTALL_METHODS:1}"
 
 	CFG_VERSION="1.0.0"
 	CFG_DIR="${DPV_DIR:-$HOME/.dpv}"
 	CFG_VENVS_DIR="$CFG_DIR/virtualenvs"
-	CFG_VENVS_PERSIST_FILE="$CFG_DIR/virtualenvs.txt"
 
 	mkdir -p "$CFG_VENVS_DIR"
 }
@@ -218,11 +211,32 @@ function _load_python_vars() {
 }
 
 function _get_python_version() {
+	local python_version
 	if [ -f "runtime.txt" ]; then
-		sed 's/^python\-//' <runtime.txt
+		python_version=$(sed 's/^python\-//' <runtime.txt)
+		_log "- parsed python version $python_version from runtime.txt file"
 	else
 		exit 2
 	fi
+
+	case "$CFG_INSTALL_METHOD" in
+	pyenv)
+		_log "- checking installation of $python_version with pyenv"
+		_log "$(sed s'/^/  > /' <(pyenv install "$python_version" --skip-existing 2>&1))"
+		_log "  ok"
+		;;
+	homebrew)
+		if [ "$(_util_count_char "$python_version" '.')" -gt 1 ]; then
+			python_version=$(cut -d. -f1,2 <(echo "$python_version"))
+			_log "- homebrew only supports 3.y python versions, using $python_version"
+		fi
+		_log "- checking installation of $python_version with homebrew"
+		_log "$(sed 's/^/  > /' <(HOMEBREW_NO_AUTO_UPDATE=1 brew install "python@$python_version" 2>&1))"
+		_log "  ok"
+		;;
+	esac
+
+	echo "$python_version"
 }
 
 function _get_python_prefix() {
@@ -246,37 +260,8 @@ function _print_venv_activate() {
 	echo "source $VENV_DIR/bin/activate || exit 2"
 }
 
-function _where() {
-	PY_VERSION=$(_get_python_version)
-	PY_PREFIX=$(_get_python_prefix)
-	VENV_DIR=$CFG_VENVS_DIR/$PY_VERSION/$(basename "$PWD")-$PY_VERSION
-
-	echo "$VENV_DIR"
-}
-
 function _plain_list() {
-	if [ ! -f "$CFG_VENVS_PERSIST_FILE" ]; then
-		_persist
-	fi
-
-	while IFS= read -r line; do
-		IFS=$'\t' read -r -a lst <<<"$line"
-		PY_VERSION=${lst[0]}
-		PY_PREFIX=${lst[1]}
-		if [ -d "$PY_PREFIX" ]; then
-			echo -e "${lst[0]}\t${lst[1]}\tINSTALLED"
-		else
-			echo -e "${lst[0]}\t${lst[1]}\tNOT INSTALLED"
-		fi
-	done < <(cat "$CFG_VENVS_PERSIST_FILE")
-}
-
-function _persist() {
-	true >"$CFG_VENVS_PERSIST_FILE"
-
-	while read -r path; do
-		printf "%s\t%s\n" "$(basename "$path")" "$path" >>"$CFG_VENVS_PERSIST_FILE"
-	done < <(compgen -G "$CFG_VENVS_DIR/*/*" || true)
+	find "$CFG_VENVS_DIR" -maxdepth 2 -mindepth 2
 }
 
 function _install() {
@@ -299,13 +284,19 @@ function _print_exit_shell() {
 	fi
 }
 
-function _get_installation_method() {
-	if [ -n "${CFG_INSTALL_METHOD+x}" ]; then
-		echo "$CFG_INSTALL_METHOD"
-	else
-		IFS=" " read -r -a installation_methods <<<"$CFG_ALL_INSTALL_METHODS"
-		echo "${installation_methods[0]}"
-	fi
+function _log() {
+	echo "$@" >>"$CFG_LOG_FILE"
+}
+
+function _print_logs() {
+	echo
+	echo "logs:"
+	sed 's/^/  /' <"$CFG_LOG_FILE"
+	echo
+}
+
+function _util_count_char() {
+	echo "$1" | tr -cd "$2" | wc -c
 }
 
 __main "$@"
