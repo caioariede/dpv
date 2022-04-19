@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         python:
-          - "3.7"
+          - "3.7.12"
         installer:
           - pyenv
 
@@ -44,7 +44,7 @@ jobs:
     strategy:
       matrix:
         python:
-          - "3.7"
+          - "3.7.12"
         installer:
           - pyenv
           - homebrew
@@ -56,12 +56,7 @@ jobs:
         with:
           submodules: recursive
 
-      - run: |
-          brew install pyenv
-          pyenv install "${{ matrix.python }}"
+      - run: brew install pyenv
         if: matrix.installer == 'pyenv'
-
-      - run: brew install "python@${{ matrix.python }}"
-        if: matrix.installer == 'homebrew'
 
       - run: ./test/run_test.sh "${{ matrix.installer }}"

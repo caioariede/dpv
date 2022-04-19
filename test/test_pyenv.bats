@@ -18,5 +18,5 @@ setup_runtime_txt() {
     run dpv usage
 
     assert_success
-    assert_output -p 'pyenv*'
+    assert_output -p 'pyenv is installed (preferred)'
 }
