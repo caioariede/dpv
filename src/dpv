@@ -47,12 +47,12 @@ function cmd_where() {
 }
 
 function cmd_instrument() {
+    trap - EXIT
+
 	# https://stackoverflow.com/a/13864829
 	if [ -n "${DPV_SHELL+x}" ]; then
 		_load_config_vars
 		_load_python_vars
-
-		trap - EXIT
 
 		_print_venv_activate
 	fi
