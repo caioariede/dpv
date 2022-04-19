@@ -25,17 +25,6 @@ setup_runtime_txt() {
     assert_output ''
 }
 
-@test "run list command with virtualenvs" {
-    printf "test\ttest\n" >"$DPV_DIR/virtualenvs.txt"
-
-    run dpv list
-
-    assert_success
-    assert_output -p 'test'
-
-    true >"$DPV_DIR/virtualenvs.txt"
-}
-
 @test "run version command" {
     run dpv version
 

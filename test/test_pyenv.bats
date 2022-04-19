@@ -15,6 +15,8 @@ setup_runtime_txt() {
 }
 
 @test "run usage command" {
+    DPV_NO_LOGS=0
+
     run dpv usage
 
     assert_success
