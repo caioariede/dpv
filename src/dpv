@@ -49,11 +49,12 @@ function cmd_where() {
 function cmd_instrument() {
 	# https://stackoverflow.com/a/13864829
 	if [ -n "${DPV_SHELL+x}" ]; then
-		DPV_INSTRUMENT=1
 		_load_config_vars
 		_load_python_vars
+
+		trap - EXIT
+
 		_print_venv_activate
-		unset DPV_INSTRUMENT
 	fi
 }
 
@@ -74,6 +75,7 @@ function cmd_run() {
 		_create_venv_if_not_exists
 	fi
 
+    _print_logs
 	_run_command "$@"
 }
 
@@ -112,6 +114,7 @@ function __main() {
 
 	run | "")
 		if [ "$#" -lt 2 ]; then
+            trap - EXIT
 			cmd_run "$SHELL"
 		else
 			cmd_run "${@:2}"
@@ -152,7 +155,7 @@ function _error_handling() {
 
 	esac
 
-	if [ -n "${DPV_INSTRUMENT+x}" ]; then
+	if [ -z "${DPV_INSTRUMENT+x}" ]; then
 		_print_logs
 	fi
 }
