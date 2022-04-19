@@ -22,7 +22,9 @@ jobs:
     strategy:
       matrix:
         python:
-          - 3.7.12
+          - "3.7.12"
+        installer:
+          - pyenv
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -34,7 +36,7 @@ jobs:
         with:
           default: "${{ matrix.python }}"
 
-      - run: make test
+      - run: ./test/run_test.sh "${{ matrix.installer }}"
 
   macos:
     # The type of runner that the job will run on
@@ -42,7 +44,10 @@ jobs:
     strategy:
       matrix:
         python:
-          - 3.7.12
+          - "3.7.12"
+        installer:
+          - pyenv
+          - homebrew
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -52,6 +57,6 @@ jobs:
           submodules: recursive
 
       - run: brew install pyenv
-      - run: pyenv install "${{ matrix.python }}"
+        if: matrix.installer == 'pyenv'
 
-      - run: make test
+      - run: ./test/run_test.sh "${{ matrix.installer }}"
