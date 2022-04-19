@@ -20,3 +20,12 @@ setup_runtime_txt() {
     assert_success
     assert_output -p 'pyenv is installed (preferred)'
 }
+
+@test "run where command with runtime.txt" {
+    setup_runtime_txt
+
+    run dpv where
+
+    assert_success
+    assert_output "$DPV_DIR/virtualenvs/3.7.12/test_dpv_proj-3.7.12"
+}

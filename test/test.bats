@@ -8,7 +8,7 @@ setup() {
 }
 
 setup_runtime_txt() {
-    echo "3.7" >runtime.txt
+    echo "3.7.12" >runtime.txt
 }
 
 @test "run usage command" {
@@ -34,15 +34,6 @@ setup_runtime_txt() {
     assert_output -p 'test'
 
     true >"$DPV_DIR/virtualenvs.txt"
-}
-
-@test "run where command with runtime.txt" {
-    setup_runtime_txt
-
-    run dpv where
-
-    assert_success
-    assert_output "$DPV_DIR/virtualenvs/3.7/test_dpv_proj-3.7"
 }
 
 @test "run version command" {
