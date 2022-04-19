@@ -169,7 +169,7 @@ function _run_command() {
 }
 
 function _load_config_vars() {
-	CFG_LOG_FILE=$(mktemp -t "dpv_logs")
+	CFG_LOG_FILE=$(mktemp "${TMPDIR:-/tmp/}dpv_logs.XXXXX")
 	CFG_INSTALL_METHOD="${DPV_INSTALL_METHOD}"
     CFG_NO_LOGS="${DPV_NO_LOGS:-0}"
 
