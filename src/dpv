@@ -75,7 +75,6 @@ function cmd_run() {
 		_create_venv_if_not_exists
 	fi
 
-	_print_logs
 	_run_command "$@"
 }
 
@@ -113,12 +112,13 @@ function __main() {
 		;;
 
 	run | "")
-		if [ "$#" -lt 2 ]; then
-			trap - EXIT
-			cmd_run "$SHELL"
-		else
-			cmd_run "${@:2}"
-		fi
+		cmd_run "${@:2}"
+		# if [ "$#" -lt 2 ]; then
+		# 	trap - EXIT
+		# 	cmd_run "$SHELL"
+		# else
+		# 	cmd_run "${@:2}"
+		# fi
 		;;
 
 	version | -v | --version)
@@ -162,10 +162,16 @@ function _error_handling() {
 
 function _run_command() {
 	if [ -n "${DPV_SHELL+x}" ]; then
+		trap - EXIT
 		exit 0
 	fi
 
-	DPV_SHELL=1 "$@"
+	if [ "$#" -eq 0 ]; then
+		trap - EXIT
+		DPV_SHELL=1 "$SHELL"
+	else
+		PATH=$VENV_DIR/bin:$PATH "$@"
+	fi
 }
 
 function _load_config_vars() {
