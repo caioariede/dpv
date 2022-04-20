@@ -81,13 +81,13 @@ function cmd_install() {
 }
 
 function err_detecting_python_version() {
-	echo "cannot determine python version for $PWD" >/dev/stderr
+	_log "- failed to determine python version for $PWD"
 
 	_print_exit_shell
 }
 
 function err_activate_virtualenv() {
-	echo "cannot activate the virtualenv" >/dev/stderr
+	_log "- failed to activate virtualenv $VENV_DIR"
 
 	_print_exit_shell
 }
@@ -133,14 +133,17 @@ function __main() {
 	esac
 }
 
+ERR_CANNOT_DETERMINE_PYTHON_VERSION=2
+ERR_CANNOT_ACTIVATE_VIRTUALENV=3
+
 function _error_handling() {
 	case "$1" in
 
-	2)
+	"$ERR_CANNOT_DETERMINE_PYTHON_VERSION")
 		err_detecting_python_version
 		;;
 
-	3)
+	"$ERR_CANNOT_ACTIVATE_VIRTUALENV")
 		err_activate_virtualenv
 		;;
 
@@ -158,8 +161,8 @@ function _run_command() {
 	fi
 
 	if [ "$#" -eq 0 ]; then
-		trap - EXIT
 		DPV_SHELL=1 "$SHELL"
+		trap - EXIT
 	else
 		PATH=$VENV_DIR/bin:$PATH "$@"
 	fi
@@ -217,7 +220,8 @@ function _get_python_version() {
 		python_version=$(sed 's/^python\-//' <runtime.txt)
 		_log "- parsed python version $python_version from runtime.txt file"
 	else
-		exit 2
+        _log "- cannot find $PWD/runtime.txt file"
+		exit "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 	fi
 
 	case "$CFG_INSTALL_METHOD" in
@@ -258,7 +262,7 @@ function _create_venv_if_not_exists() {
 }
 
 function _print_venv_activate() {
-	echo "source $VENV_DIR/bin/activate || exit 2"
+	echo "source $VENV_DIR/bin/activate || exit $ERR_CANNOT_ACTIVATE_VIRTUALENV"
 }
 
 function _plain_list() {
