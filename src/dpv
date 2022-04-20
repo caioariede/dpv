@@ -9,11 +9,8 @@
 #
 #       eval "$(dpv instrument)"
 #
-#   4. Make sure pyenv is installed: brew install pyenv
-#
 # Usage:
 #   Go to the directory of the project and call "dpv"
-#   If it complains that the Python version is not installed, use: pyenv install <version>
 #
 set -e
 
@@ -113,12 +110,6 @@ function __main() {
 
 	run | "")
 		cmd_run "${@:2}"
-		# if [ "$#" -lt 2 ]; then
-		# 	trap - EXIT
-		# 	cmd_run "$SHELL"
-		# else
-		# 	cmd_run "${@:2}"
-		# fi
 		;;
 
 	version | -v | --version)
