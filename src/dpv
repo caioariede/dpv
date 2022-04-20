@@ -14,22 +14,28 @@
 #
 set -e
 
-function cmd_usage() {
+function cmd_help() {
 	_load_config_vars
 
 	echo "dpv $CFG_VERSION"
 	echo
 	echo "usage:"
 	echo "  dpv             - installs virtualenv for the current directory"
-	echo "  dpv usage       - display these instructions"
+	echo "  dpv help        - display these instructions"
 	echo "  dpv list        - lists virtualenvs managed by dpv"
 	echo "  dpv where       - display the virtualenv directory"
 	echo "  dpv version     - display version"
 	echo "  dpv instrument  - instruments dpv"
 	echo "  dpv run [cmd]   - runs command inside virtualenv [default: \$SHELL]"
 	echo
-	echo "  CTRL-D          - exits virtualenv"
-
+	echo "aliases:"
+	echo "  dpv -h / dpv help"
+	echo "  dpv -v / dpv version"
+	echo "  dpv -l / dpv ls / dpv list"
+	echo
+	echo "global arguments:"
+	echo "  -q / --quiet    - do not show logs"
+	echo
 }
 
 function cmd_version() {
@@ -73,11 +79,6 @@ function cmd_run() {
 	fi
 
 	_run_command "$@"
-}
-
-function cmd_install() {
-	_load_config_vars
-	_install
 }
 
 function err_detecting_python_version() {
@@ -124,7 +125,7 @@ function __main() {
 		cmd_instrument
 		;;
 
-	list | ls)
+	list | ls | -l)
 		cmd_list "${1:--plain}"
 		;;
 
@@ -132,16 +133,12 @@ function __main() {
 		cmd_run "$@"
 		;;
 
-	version | -v | --version)
+	version | -v)
 		cmd_version
 		;;
 
-	install)
-		cmd_install
-		;;
-
-	usage)
-		cmd_usage
+	help | -h)
+		cmd_help
 		;;
 
 	*)
@@ -288,19 +285,6 @@ function _print_venv_activate() {
 
 function _plain_list() {
 	find "$CFG_VENVS_DIR" -maxdepth 2 -mindepth 2
-}
-
-function _install() {
-	while IFS= read -r line; do
-		IFS=$'\t' read -r -a lst <<<"$line"
-		PY_VERSION=${lst[0]}
-		PY_PREFIX=$(_get_python_prefix)
-		VENV_DIR="${lst[1]}"
-		if [ ! -f "$PY_PREFIX" ]; then
-			echo "Installing $VENV_DIR"
-			_create_venv_if_not_exists
-		fi
-	done < <(_plain_list)
 }
 
 function _print_exit_shell() {
