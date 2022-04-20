@@ -95,7 +95,27 @@ function err_activate_virtualenv() {
 function __main() {
 	trap '_error_handling $?' EXIT
 
-	case "$1" in
+	CMD=""
+
+	# parse global arguments
+	for i in "$@"; do
+		case $i in
+		-q | --quiet)
+			ARG_QUIET=1
+			shift
+			;;
+		*)
+			if [ "$CMD" == "" ]; then
+				CMD="$i"
+				shift
+			else
+				break
+			fi
+			;;
+		esac
+	done
+
+	case "$CMD" in
 	where)
 		cmd_where
 		;;
@@ -105,11 +125,11 @@ function __main() {
 		;;
 
 	list | ls)
-		cmd_list "${2:--plain}"
+		cmd_list "${1:--plain}"
 		;;
 
 	run | "")
-		cmd_run "${@:2}"
+		cmd_run "$@"
 		;;
 
 	version | -v | --version)
@@ -126,7 +146,7 @@ function __main() {
 
 	*)
 		trap - EXIT
-		echo "?"
+		echo "dpv invalid subcommand: $CMD"
 		exit 1
 		;;
 
@@ -161,6 +181,7 @@ function _run_command() {
 	fi
 
 	if [ "$#" -eq 0 ]; then
+		_print_logs
 		DPV_SHELL=1 "$SHELL"
 		trap - EXIT
 	else
@@ -171,7 +192,7 @@ function _run_command() {
 function _load_config_vars() {
 	CFG_LOG_FILE=$(mktemp "${TMPDIR:-/tmp/}dpv_logs.XXXXX")
 	CFG_INSTALL_METHOD="${DPV_INSTALL_METHOD}"
-	CFG_NO_LOGS="${DPV_NO_LOGS:-0}"
+	CFG_QUIET="${ARG_QUIET:-${DPV_QUIET:-0}}"
 
 	# https://stackoverflow.com/a/677212
 	if hash pyenv 2>/dev/null; then
@@ -220,7 +241,7 @@ function _get_python_version() {
 		python_version=$(sed 's/^python\-//' <runtime.txt)
 		_log "- parsed python version $python_version from runtime.txt file"
 	else
-        _log "- cannot find $PWD/runtime.txt file"
+		_log "- cannot find $PWD/runtime.txt file"
 		exit "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 	fi
 
@@ -294,7 +315,7 @@ function _log() {
 }
 
 function _print_logs() {
-	if [ "$CFG_NO_LOGS" -eq 0 ]; then
+	if [[ "$CFG_QUIET" -eq 0 ]]; then
 		echo
 		echo "logs:"
 		sed 's/^/  /' <"$CFG_LOG_FILE"

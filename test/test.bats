@@ -19,7 +19,7 @@ setup_runtime_txt() {
 }
 
 @test "run list command without any virtualenvs" {
-    run dpv list
+    run dpv list --quiet
 
     assert_success
     assert_output ''
