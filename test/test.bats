@@ -1,70 +1,71 @@
 setup() {
-    load 'test_helper/bats-support/load'
-    load 'test_helper/bats-assert/load'
+	load 'test_helper/bats-support/load'
+	load 'test_helper/bats-assert/load'
 
-    DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" >/dev/null 2>&1 && pwd)"
+	DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" >/dev/null 2>&1 && pwd)"
 
-    source "$DIR/helper.sh"
+    # shellcheck source=./helper.sh
+	source "$DIR/helper.sh"
 }
 
 setup_runtime_txt() {
-    echo "3.7.12" >runtime.txt
+	echo "3.7.12" >runtime.txt
 }
 
-@test "run usage command" {
-    run dpv usage
+function run_help_command { # @test
+	run dpv help
 
-    assert_success
-    assert_output -p 'usage'
+	assert_success
+	assert_output -p 'usage'
 }
 
-@test "run list command without any virtualenvs" {
-    run dpv list --quiet
+function run_list_command_withotu_any_virtualenvs { # @test
+	run dpv list --quiet
 
-    assert_success
-    assert_output ''
+	assert_success
+	assert_output ''
 }
 
-@test "run version command" {
-    run dpv version
+function run_version_command { # @test
+	run dpv version
 
-    assert_success
-    assert_output
+	assert_success
+	assert_output
 }
 
-@test "run instrument command without the shell flag set" {
-    run dpv instrument
+function run_instrument_command_without_the_shell_flag_set { # @test
+	run dpv instrument
 
-    assert_success
-    assert_output ''
+	assert_success
+	assert_output ''
 }
 
-@test "run instrument command with the shell flag set" {
-    setup_runtime_txt
+function run_instrument_command_with_the_shell_flag_set { # @test
+	setup_runtime_txt
 
-    DPV_SHELL=1 run dpv instrument
+	DPV_SHELL=1 run dpv instrument
 
-    assert_success
-    assert_output -p "source"
+	assert_success
+	assert_output -p "source"
 }
 
-@test "run instrument command with the shell flag but cannot determine Python version" {
-    DPV_SHELL=1 run dpv instrument
+function run_instrument_command_with_the_shell_flag_but_cannot_determine_python_version { # @test
+	DPV_SHELL=1 run dpv instrument
 
-    assert_failure $ERR_CANNOT_DETERMINE_PYTHON_VERSION
+	assert_failure "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 }
 
-@test "run 'run' command but cannot determine Python version" {
-    run dpv run
+function run_run_command_but_cannot_determine_python_version { # @test
+	run dpv run
 
-    assert_failure $ERR_CANNOT_DETERMINE_PYTHON_VERSION
+	assert_failure "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 }
 
-@test "run 'run' command with runtime.txt" {
-    setup_runtime_txt
+function run_run_command_with_runtime_txt { # @test
+	setup_runtime_txt
 
-    run dpv run bash -c 'python --version'
+	run dpv run bash -c 'python --version'
 
-    assert_success
-    assert_output -p "Python 3.7"
+	assert_success
+	assert_output -p "Python 3.7"
 }
