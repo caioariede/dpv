@@ -15,8 +15,6 @@ setup_runtime_txt() {
 }
 
 @test "run usage command" {
-    DPV_NO_LOGS=0
-
     run dpv usage
 
     assert_success
@@ -26,7 +24,7 @@ setup_runtime_txt() {
 @test "run where command with runtime.txt" {
     setup_runtime_txt
 
-    run dpv where
+    run dpv where --quiet
 
     assert_success
     assert_output "$DPV_DIR/virtualenvs/3.7/test_dpv_proj-3.7"
