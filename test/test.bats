@@ -63,8 +63,8 @@ setup_runtime_txt() {
 @test "run 'run' command with runtime.txt" {
     setup_runtime_txt
 
-    run dpv run bash -c 'echo $DPV_SHELL'
+    run dpv run bash -c 'python --version'
 
     assert_success
-    assert_output '1'
+    assert_output -p "Python 3.7"
 }
