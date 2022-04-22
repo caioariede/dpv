@@ -15,18 +15,37 @@ setup_runtime_txt() {
 	echo "3.7.12" >runtime.txt
 }
 
-run_help_command() { # @test
+#
+# Test help command
+#
+
+test_cmd_help() { # @test
 	run dpv help
 
 	assert_success
-	assert_output -p 'homebrew is installed (preferred)'
+	assert_output -p 'homebrew is installed and is the preferred installation method'
 }
 
-run_where_command_with_runtime_txt() { # @test
+#
+# Test where command
+#
+
+test_cmd_where_with_runtime_txt() { # @test
 	setup_runtime_txt
 
 	run dpv where --quiet
 
 	assert_success
 	assert_output "$DPV_DIR/virtualenvs/3.7/test_dpv_proj-3.7"
+}
+
+#
+# Test versions command
+#
+
+test_cmd_versions() { # @test
+	run dpv versions
+
+	assert_success
+	assert_output --regexp 'homebrew:.*3\.7'
 }

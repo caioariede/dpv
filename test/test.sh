@@ -12,35 +12,40 @@ setup_runtime_txt() {
 	echo "3.7.12" >runtime.txt
 }
 
-run_help_command() { # @test
+#
+# Test help command
+#
+
+test_cmd_help() { # @test
 	run dpv help
 
 	assert_success
 	assert_output -p 'usage'
 }
 
-run_list_command_withotu_any_virtualenvs() { # @test
+#
+# Test list command
+#
+
+test_cmd_list_without_any_virtualenvs() { # @test
 	run dpv list --quiet
 
 	assert_success
 	assert_output ''
 }
 
-run_version_command() { # @test
-	run dpv version
+#
+# Test instrument command
+#
 
-	assert_success
-	assert_output
-}
-
-run_instrument_command_without_the_shell_flag_set() { # @test
+test_cmd_instrument_without_shell_flag() { # @test
 	run dpv instrument
 
 	assert_success
 	assert_output ''
 }
 
-run_instrument_command_with_the_shell_flag_set() { # @test
+test_cmd_instrument_with_shell_flag() { # @test
 	setup_runtime_txt
 
 	DPV_SHELL=1 run dpv instrument
@@ -49,19 +54,23 @@ run_instrument_command_with_the_shell_flag_set() { # @test
 	assert_output -p "source"
 }
 
-run_instrument_command_with_the_shell_flag_but_cannot_determine_python_version() { # @test
+test_cmd_instrument_cannot_determine_python_version() { # @test
 	DPV_SHELL=1 run dpv instrument
 
 	assert_failure "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 }
 
-run_run_command_but_cannot_determine_python_version() { # @test
+#
+# Test run command
+#
+
+test_cmd_run_cannot_determine_python_version() { # @test
 	run dpv run
 
 	assert_failure "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 }
 
-run_run_command_with_runtime_txt() { # @test
+test_cmd_run_with_runtime_txt() { # @test
 	setup_runtime_txt
 
 	run dpv run bash -c 'python --version'
