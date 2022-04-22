@@ -57,20 +57,6 @@ cmd_versions() {
 	fi
 }
 
-_run_command_log_failure() {
-	tmpfile=$(mktemp)
-
-	# shellcheck disable=SC2068
-	if $@ &>"$tmpfile"; then
-		cat "$tmpfile"
-		exit 0
-	else
-		_log "- failed to retrieve python versions from homebrew:"
-		_log "$(sed 's/^/  > /' <"$tmpfile")"
-		exit 1
-	fi
-}
-
 cmd_where() {
 	_load_config_vars
 	_load_python_vars
@@ -338,6 +324,20 @@ _print_logs() {
 		echo "logs:"
 		sed 's/^/  /' <"$CFG_LOG_FILE"
 		echo
+	fi
+}
+
+_run_command_log_failure() {
+	tmpfile=$(mktemp)
+
+	# shellcheck disable=SC2068
+	if $@ &>"$tmpfile"; then
+		cat "$tmpfile"
+		exit 0
+	else
+		_log "- failed to retrieve python versions from homebrew:"
+		_log "$(sed 's/^/  > /' <"$tmpfile")"
+		exit 1
 	fi
 }
 
