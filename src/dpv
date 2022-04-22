@@ -24,7 +24,7 @@ cmd_help() {
 	echo "  dpv help        - display these instructions"
 	echo "  dpv list        - lists virtualenvs managed by dpv"
 	echo "  dpv where       - display the virtualenv directory"
-	echo "  dpv versions    - display available python versions"
+	echo "  dpv versions    - display python versions"
 	echo "    --all         - include all versions rather than a simplified list"
 	echo "    --installed   - only display versions that are currently installed"
 	echo "  dpv instrument  - instruments dpv"
@@ -43,25 +43,28 @@ cmd_help() {
 cmd_versions() {
 	_load_config_vars
 
-	echo "retrieving available python versions..."
-	echo
-
 	if [[ "$CFG_AVAILABLE_INSTALL_METHODS" =~ "pyenv;" ]]; then
 		case "$1" in
 		--installed)
+			echo "retrieving installed python versions..."
+			echo
 			if result=$(_run_command_log_failure "pyenv versions --bare --skip-aliases"); then
 				echo "pyenv: $(echo "$result" | cut -d/ -f1 | uniq | sort --version-sort | tr '\n' ' ')"
 			fi
 			;;
 		--all)
+			echo "retrieving all available python versions..."
+			echo
 			if result=$(_run_command_log_failure "pyenv install --list"); then
 				echo "pyenv: $(echo "$result" | sed 's/ //g' | tail -n +2 | tr '\n' ' ')"
 			fi
 			;;
 		*)
+			echo "retrieving available python versions..."
+			echo
 			local supported_python_versions_grep_regex='^\(3\.\([789]\|1[^.]\)\.0$\)\|^\(4\.[0-9]\+\.0$\)'
 			if result=$(_run_command_log_failure "pyenv install --list"); then
-				echo "pyenv: $(echo "$result" | sed 's/ //g' | grep "$supported_python_versions_grep_regex" | sed 's/\.0$//' | tr '\n' ' ')"
+				echo "pyenv: $(echo "$result" | sed 's/ //g' | grep "$supported_python_versions_grep_regex" | _util_strip_point_zero | tr '\n' ' ')"
 			fi
 			;;
 		esac
@@ -360,6 +363,10 @@ _run_command_log_failure() {
 
 _util_count_char() {
 	echo "$1" | tr -cd "$2" | wc -c
+}
+
+_util_strip_point_zero() {
+	sed 's/\.0$//'
 }
 
 __main "$@"
