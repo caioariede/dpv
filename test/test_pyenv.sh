@@ -47,5 +47,12 @@ test_cmd_versions() { # @test
 	run dpv versions
 
 	assert_success
+	assert_output --regexp 'pyenv:.*3\.7'
+}
+
+test_cmd_versions_all() { # @test
+	run dpv versions --all
+
+	assert_success
 	assert_output --regexp 'pyenv:.*3\.7\.12'
 }
