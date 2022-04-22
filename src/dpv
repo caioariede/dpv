@@ -25,6 +25,8 @@ cmd_help() {
 	echo "  dpv list        - lists virtualenvs managed by dpv"
 	echo "  dpv where       - display the virtualenv directory"
 	echo "  dpv versions    - display available python versions"
+	echo "    --all         - include all versions rather than a simplified list"
+	echo "    --installed   - only display versions that are currently installed"
 	echo "  dpv instrument  - instruments dpv"
 	echo "  dpv run [cmd]   - runs command inside virtualenv [default: \$SHELL]"
 	echo
@@ -44,15 +46,30 @@ cmd_versions() {
 	echo "retrieving available python versions..."
 	echo
 
+	if [[ "$CFG_AVAILABLE_INSTALL_METHODS" =~ "pyenv;" ]]; then
+		case "$1" in
+		--installed)
+			if result=$(_run_command_log_failure "pyenv versions --bare --skip-aliases"); then
+				echo "pyenv: $(echo "$result" | cut -d/ -f1 | uniq | sort --version-sort | tr '\n' ' ')"
+			fi
+			;;
+		--all)
+			if result=$(_run_command_log_failure "pyenv install --list"); then
+				echo "pyenv: $(echo "$result" | sed 's/ //g' | tail -n +2 | tr '\n' ' ')"
+			fi
+			;;
+		*)
+			local supported_python_versions_grep_regex='^\(3\.\([789]\|1[^.]\)\.0$\)\|^\(4\.[0-9]\+\.0$\)'
+			if result=$(_run_command_log_failure "pyenv install --list"); then
+				echo "pyenv: $(echo "$result" | sed 's/ //g' | grep "$supported_python_versions_grep_regex" | sed 's/\.0$//' | tr '\n' ' ')"
+			fi
+			;;
+		esac
+	fi
+
 	if [[ "$CFG_AVAILABLE_INSTALL_METHODS" =~ "homebrew;" ]]; then
 		if result=$(_run_command_log_failure "brew search python"); then
 			echo "homebrew: $(echo "$result" | grep -o 'python@[^ ]\+' | cut -d@ -f2 | sort --version-sort | tr '\n' ' ')"
-		fi
-	fi
-
-	if [[ "$CFG_AVAILABLE_INSTALL_METHODS" =~ "pyenv;" ]]; then
-		if result=$(_run_command_log_failure "pyenv versions"); then
-			echo "pyenv: $(pyenv versions --bare --skip-aliases | cut -d/ -f1 | sort --version-sort | uniq | tr '\n' ' ')"
 		fi
 	fi
 }
@@ -136,7 +153,7 @@ __main() {
 		;;
 
 	versions | -v)
-		cmd_versions
+		cmd_versions "${@:1}"
 		;;
 
 	help | -h)
