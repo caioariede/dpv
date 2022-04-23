@@ -29,11 +29,11 @@
 # 8. Utilities are "pure" functions and should be prefixed with "_util_"
 # 9. Exit codes should be stored in constants prefixed with "ERR_"
 
+set -e
+
 ERR_CANNOT_DETERMINE_PYTHON_VERSION=2
 ERR_CANNOT_ACTIVATE_VIRTUALENV=3
 ERR_NO_INSTALL_METHOD=4
-
-set -e
 
 #
 # Command functions
@@ -152,6 +152,7 @@ _cmd_versions_installed_homebrew() {
 cmd_where() {
 	init_config_vars
 	init_virtualenv_vars
+
 	echo "$VENV_DIR"
 }
 
@@ -168,12 +169,9 @@ cmd_internal_instrument() {
 }
 
 cmd_list() {
-	case "$1" in
-	--plain | *)
-		init_config_vars
-		find "$CFG_VENVS_DIR" -maxdepth 2 -mindepth 2
-		;;
-	esac
+	init_config_vars
+
+	find "$CFG_VENVS_DIR" -maxdepth 2 -mindepth 2
 }
 
 cmd_run() {
@@ -316,7 +314,7 @@ main() {
 		;;
 
 	list | ls | -l)
-		cmd_list "${1:--plain}"
+		cmd_list
 		;;
 
 	run | "")
