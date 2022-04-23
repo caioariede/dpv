@@ -7,15 +7,40 @@
 #   2. Give execution permission: "chmod +x /usr/local/bin/dpv"
 #   3. Add this line to your ~/.zshrc (or whatever):
 #
-#       eval "$(dpv instrument)"
+#       eval "$(dpv internal-instrument)"
 #
 # Usage:
 #   Go to the directory of the project and call "dpv"
 #
+# Code guidelines:
+#
+# 1. Internal commands should be prefixed with "internal-"
+# 2. Commands are displayed in the usage by alphabetical order
+# 3. There are four kinds of functions:
+#    - command function
+#    - command variant functions
+#    - initialization functions
+#    - short-hand functions
+#    - utility functions
+# 4. Command functions should be named "cmd_{command name}"
+# 5. Command variants functions should be named "cmd_{command name}_{variant}"
+# 6. Initialization functions should be named "init_{name}"
+# 7. Short-hand functions differently than utilities are not pure
+# 8. Utilities are "pure" functions and should be prefixed with "_util_"
+# 9. Exit codes should be stored in constants prefixed with "ERR_"
+
+ERR_CANNOT_DETERMINE_PYTHON_VERSION=2
+ERR_CANNOT_ACTIVATE_VIRTUALENV=3
+ERR_NO_INSTALL_METHOD=4
+
 set -e
 
+#
+# Command functions
+#
+
 cmd_help() {
-	_load_config_vars
+	init_config_vars
 
 	echo "dpv $CFG_VERSION"
 	echo
@@ -23,25 +48,24 @@ cmd_help() {
 	echo "  dpv             - installs virtualenv for the current directory"
 	echo "  dpv help        - display these instructions"
 	echo "  dpv list        - lists virtualenvs managed by dpv"
-	echo "  dpv where       - display the virtualenv directory"
+	echo "  dpv run [cmd]   - runs command inside virtualenv [default: \$SHELL]"
 	echo "  dpv versions    - display python versions"
 	echo "    --all         - include all versions rather than a simplified list"
 	echo "    --installed   - only display versions that are currently installed"
-	echo "  dpv instrument  - instruments dpv"
-	echo "  dpv run [cmd]   - runs command inside virtualenv [default: \$SHELL]"
+	echo "  dpv where       - display the virtualenv directory"
 	echo
 	echo "global arguments:"
 	echo "  -q / --quiet    - do not show logs"
 	echo
 	echo "aliases:"
 	echo "  dpv -h / dpv help"
-	echo "  dpv -v / dpv versions"
 	echo "  dpv -l / dpv ls / dpv list"
+	echo "  dpv -v / dpv versions"
 	echo
 }
 
 cmd_versions() {
-	_load_config_vars
+	init_config_vars
 
 	case "$1" in
 	--installed)
@@ -49,11 +73,11 @@ cmd_versions() {
 		echo
 		_has_pyenv && (
 			echo -n "pyenv: "
-			cmd_versions_installed_pyenv
+			_cmd_versions_installed_pyenv
 		)
 		_has_homebrew && (
 			echo -n "homebrew: "
-			cmd_versions_installed_homebrew
+			_cmd_versions_installed_homebrew
 		)
 		;;
 	--all)
@@ -61,11 +85,11 @@ cmd_versions() {
 		echo
 		_has_pyenv && (
 			echo -n "pyenv: "
-			cmd_versions_all_pyenv
+			_cmd_versions_all_pyenv
 		)
 		_has_homebrew && (
 			echo -n "homebrew: "
-			cmd_versions_available_homebrew
+			_cmd_versions_available_homebrew
 		)
 		;;
 	*)
@@ -73,17 +97,17 @@ cmd_versions() {
 		echo
 		_has_pyenv && (
 			echo -n "pyenv: "
-			cmd_versions_available_pyenv
+			_cmd_versions_available_pyenv
 		)
 		_has_homebrew && (
 			echo -n "homebrew: "
-			cmd_versions_available_homebrew
+			_cmd_versions_available_homebrew
 		)
 		;;
 	esac
 }
 
-cmd_versions_installed_pyenv() {
+_cmd_versions_installed_pyenv() {
 	if result=$(_run_command_log_failure "pyenv versions --bare --skip-aliases"); then
 		echo "$result" | cut -d/ -f1 | uniq | sort --version-sort | tr '\n' ' '
 		echo
@@ -92,7 +116,7 @@ cmd_versions_installed_pyenv() {
 	fi
 }
 
-cmd_versions_all_pyenv() {
+_cmd_versions_all_pyenv() {
 	if result=$(_run_command_log_failure "pyenv install --list"); then
 		echo "$result" | sed 's/ //g' | tail -n +2 | tr '\n' ' '
 		echo
@@ -101,7 +125,7 @@ cmd_versions_all_pyenv() {
 	fi
 }
 
-cmd_versions_available_pyenv() {
+_cmd_versions_available_pyenv() {
 	local supported_python_versions_grep_regex='^\(3\.\([789]\|1[^.]\)\.0$\)\|^\(4\.[0-9]\+\.0$\)'
 	if result=$(_run_command_log_failure "pyenv install --list"); then
 		echo "$result" | sed 's/ //g' | grep "$supported_python_versions_grep_regex" | _util_strip_point_zero | tr '\n' ' '
@@ -111,14 +135,14 @@ cmd_versions_available_pyenv() {
 	fi
 }
 
-cmd_versions_available_homebrew() {
+_cmd_versions_available_homebrew() {
 	if result=$(_run_command_log_failure "brew search python"); then
 		echo "$result" | grep -o 'python@[^ ]\+' | cut -d@ -f2 | sort --version-sort | tr '\n' ' '
 		echo
 	fi
 }
 
-cmd_versions_installed_homebrew() {
+_cmd_versions_installed_homebrew() {
 	if result=$(_run_command_log_failure "brew list"); then
 		echo "$result" | grep 'python@' | cut -d@ -f2 | sort --version-sort | tr '\n' ' '
 		echo
@@ -126,129 +150,40 @@ cmd_versions_installed_homebrew() {
 }
 
 cmd_where() {
-	_load_config_vars
-	_load_python_vars
+	init_config_vars
+	init_virtualenv_vars
 	echo "$VENV_DIR"
 }
 
-cmd_instrument() {
+cmd_internal_instrument() {
 	trap - EXIT
 
 	# https://stackoverflow.com/a/13864829
 	if [ -n "${DPV_SHELL+x}" ]; then
-		_load_config_vars
-		_load_python_vars
+		init_config_vars
+		init_virtualenv_vars
 
-		_print_venv_activate
+		echo "source $VENV_DIR/bin/activate || exit $ERR_CANNOT_ACTIVATE_VIRTUALENV"
 	fi
 }
 
 cmd_list() {
 	case "$1" in
 	--plain | *)
-		_load_config_vars
-		_plain_list
+		init_config_vars
+		find "$CFG_VENVS_DIR" -maxdepth 2 -mindepth 2
 		;;
 	esac
 }
 
 cmd_run() {
-	_load_config_vars
-	_load_python_vars
+	init_config_vars
+	init_virtualenv_vars
 
 	if [ ! -d "$VENV_DIR" ]; then
-		_create_venv_if_not_exists
+		"$PY_EXECUTABLE" -m venv "$VENV_DIR"
 	fi
 
-	_run_command "$@"
-}
-
-__main() {
-	trap '_error_handling $?' EXIT
-
-	CMD=""
-
-	# parse global arguments
-	for i in "$@"; do
-		case $i in
-		-q | --quiet)
-			ARG_QUIET=1
-			shift
-			;;
-		*)
-			if [ "$CMD" == "" ]; then
-				CMD="$i"
-				shift
-			else
-				break
-			fi
-			;;
-		esac
-	done
-
-	case "$CMD" in
-	where)
-		cmd_where
-		;;
-
-	instrument)
-		cmd_instrument
-		;;
-
-	list | ls | -l)
-		cmd_list "${1:--plain}"
-		;;
-
-	run | "")
-		cmd_run "$@"
-		;;
-
-	versions | -v)
-		cmd_versions "${@:1}"
-		;;
-
-	help | -h)
-		cmd_help
-		;;
-
-	*)
-		trap - EXIT
-		echo "dpv invalid subcommand: $CMD"
-		exit 1
-		;;
-
-	esac
-}
-
-ERR_CANNOT_DETERMINE_PYTHON_VERSION=2
-ERR_CANNOT_ACTIVATE_VIRTUALENV=3
-ERR_NO_INSTALL_METHOD=4
-
-_error_handling() {
-	case "$1" in
-
-	"$ERR_CANNOT_DETERMINE_PYTHON_VERSION")
-		echo "failed to determine python version for $PWD"
-		;;
-
-	"$ERR_CANNOT_ACTIVATE_VIRTUALENV")
-		echo "failed to activate virtualenv $VENV_DIR"
-		;;
-
-	"$ERR_NO_INSTALL_METHOD")
-		echo "no installation methods found"
-		;;
-
-	esac
-
-	if [ -z "${DPV_INSTRUMENT+x}" ]; then
-		_print_logs
-	else
-		_print_exit_shell
-	fi
-}
-
-_run_command() {
 	if [ -n "${DPV_SHELL+x}" ]; then
 		trap - EXIT
 		exit 0
@@ -263,7 +198,11 @@ _run_command() {
 	fi
 }
 
-_load_config_vars() {
+#
+# Initialization functions
+#
+
+init_config_vars() {
 	CFG_LOG_FILE=$(mktemp "${TMPDIR:-/tmp/}dpv_logs.XXXXX")
 	CFG_INSTALL_METHOD="${DPV_INSTALL_METHOD}"
 	CFG_AVAILABLE_INSTALL_METHODS=""
@@ -304,27 +243,10 @@ _load_config_vars() {
 	mkdir -p "$CFG_VENVS_DIR"
 }
 
-_load_python_vars() {
-	PY_VERSION=$(_get_python_version)
-	PY_PREFIX=$(_get_python_prefix)
-
-	case "$CFG_INSTALL_METHOD" in
-	pyenv)
-		PY_EXECUTABLE="$PY_PREFIX/bin/python"
-		;;
-	homebrew)
-		PY_EXECUTABLE="$PY_PREFIX/bin/python3"
-		;;
-	esac
-
-	VENV_DIR=$CFG_VENVS_DIR/$PY_VERSION/$(basename "$PWD")-$PY_VERSION
-}
-
-_get_python_version() {
-	local python_version
+init_virtualenv_vars() {
 	if [ -f "runtime.txt" ]; then
-		python_version=$(sed 's/^python\-//' <runtime.txt)
-		_log "- parsed python version $python_version from runtime.txt file"
+		PY_VERSION=$(sed 's/^python\-//' <runtime.txt)
+		_log "- parsed python version $PY_VERSION from runtime.txt file"
 	else
 		_log "- cannot find $PWD/runtime.txt file"
 		exit "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
@@ -332,55 +254,126 @@ _get_python_version() {
 
 	case "$CFG_INSTALL_METHOD" in
 	pyenv)
-		_log "- checking installation of $python_version with pyenv"
-		_log "$(sed s'/^/  > /' <(pyenv install "$python_version" --skip-existing 2>&1))"
+		_log "- checking installation of $PY_VERSION with pyenv"
+		_log "$(sed s'/^/  > /' <(pyenv install "$PY_VERSION" --skip-existing 2>&1))"
 		_log "  ok"
+
+		PY_PREFIX=$(pyenv prefix "$PY_VERSION")
+		PY_EXECUTABLE="$PY_PREFIX/bin/python"
 		;;
 	homebrew)
-		if [ "$(_util_count_char "$python_version" '.')" -gt 1 ]; then
-			python_version=$(cut -d. -f1,2 <(echo "$python_version"))
-			_log "- homebrew only supports 3.y python versions, using $python_version"
+		if [ "$(_util_count_char "$PY_VERSION" '.')" -gt 1 ]; then
+			python_version=$(cut -d. -f1,2 <(echo "$PY_VERSION"))
+			_log "- homebrew only supports 3.y python versions, using $PY_VERSION"
 		fi
-		_log "- checking installation of $python_version with homebrew"
-		_log "$(sed 's/^/  > /' <(HOMEBREW_NO_AUTO_UPDATE=1 brew install "python@$python_version" 2>&1))"
+
+		_log "- checking installation of $PY_VERSION with homebrew"
+		_log "$(sed 's/^/  > /' <(HOMEBREW_NO_AUTO_UPDATE=1 brew install "python@$PY_VERSION" 2>&1))"
 		_log "  ok"
+
+		PY_PREFIX=$(brew --prefix "python@$PY_VERSION")
+		PY_EXECUTABLE="$PY_PREFIX/bin/python3"
 		;;
 	esac
 
-	echo "$python_version"
+	VENV_DIR=$CFG_VENVS_DIR/$PY_VERSION/$(basename "$PWD")-$PY_VERSION
 }
 
-_get_python_prefix() {
-	case "$CFG_INSTALL_METHOD" in
-	pyenv)
-		pyenv prefix "$PY_VERSION"
+#
+# Main function
+#
+
+main() {
+	trap 'error_handling $?' EXIT
+
+	CMD=""
+
+	# parse global arguments
+	for i in "$@"; do
+		case $i in
+		-q | --quiet)
+			ARG_QUIET=1
+			shift
+			;;
+		*)
+			if [ "$CMD" == "" ]; then
+				CMD="$i"
+				shift
+			else
+				break
+			fi
+			;;
+		esac
+	done
+
+	case "$CMD" in
+	where)
+		cmd_where
 		;;
-	homebrew)
-		brew --prefix "python@$PY_VERSION"
+
+	internal-instrument)
+		cmd_internal_instrument
 		;;
+
+	list | ls | -l)
+		cmd_list "${1:--plain}"
+		;;
+
+	run | "")
+		cmd_run "$@"
+		;;
+
+	versions | -v)
+		cmd_versions "${@:1}"
+		;;
+
+	help | -h)
+		cmd_help
+		;;
+
+	*)
+		trap - EXIT
+		echo "dpv invalid subcommand: $CMD"
+		exit 1
+		;;
+
 	esac
 }
 
-_create_venv_if_not_exists() {
-	if [ ! -d "$VENV_DIR" ]; then
-		"$PY_EXECUTABLE" -m venv "$VENV_DIR"
+#
+# Error-handling
+#
+
+error_handling() {
+	case "$1" in
+
+	"$ERR_CANNOT_DETERMINE_PYTHON_VERSION")
+		echo "failed to determine python version for $PWD"
+		;;
+
+	"$ERR_CANNOT_ACTIVATE_VIRTUALENV")
+		echo "failed to activate virtualenv $VENV_DIR"
+		;;
+
+	"$ERR_NO_INSTALL_METHOD")
+		echo "no installation methods found"
+		;;
+
+	esac
+
+	if [ -z "${DPV_INSTRUMENT+x}" ]; then
+		_print_logs
+	else
+		if [ -n "${DPV_SHELL+x}" ]; then
+			echo "unset DPV_SHELL"
+			echo "exit 1"
+		fi
 	fi
 }
 
-_print_venv_activate() {
-	echo "source $VENV_DIR/bin/activate || exit $ERR_CANNOT_ACTIVATE_VIRTUALENV"
-}
-
-_plain_list() {
-	find "$CFG_VENVS_DIR" -maxdepth 2 -mindepth 2
-}
-
-_print_exit_shell() {
-	if [ -n "${DPV_SHELL+x}" ]; then
-		echo "unset DPV_SHELL"
-		echo "exit 1"
-	fi
-}
+#
+# Short-hand functions
+#
 
 _log() {
 	echo -e "$@" >>"$CFG_LOG_FILE"
@@ -417,6 +410,10 @@ _has_homebrew() {
 	[[ "$CFG_AVAILABLE_INSTALL_METHODS" =~ "homebrew;" ]] || exit 1
 }
 
+#
+# Utilities
+#
+
 _util_count_char() {
 	echo "$1" | tr -cd "$2" | wc -c
 }
@@ -425,4 +422,4 @@ _util_strip_point_zero() {
 	sed 's/\.0$//'
 }
 
-__main "$@"
+main "$@"

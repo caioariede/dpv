@@ -35,27 +35,27 @@ test_cmd_list_without_any_virtualenvs() { # @test
 }
 
 #
-# Test instrument command
+# Test internal-instrument command
 #
 
-test_cmd_instrument_without_shell_flag() { # @test
-	run dpv instrument
+test_cmd_internal_instrument_without_shell_flag() { # @test
+	run dpv internal-instrument
 
 	assert_success
 	assert_output ''
 }
 
-test_cmd_instrument_with_shell_flag() { # @test
+test_cmd_internal_instrument_with_shell_flag() { # @test
 	setup_runtime_txt
 
-	DPV_SHELL=1 run dpv instrument
+	DPV_SHELL=1 run dpv internal-instrument
 
 	assert_success
 	assert_output -p "source"
 }
 
-test_cmd_instrument_cannot_determine_python_version() { # @test
-	DPV_SHELL=1 run dpv instrument
+test_cmd_internal_instrument_cannot_determine_python_version() { # @test
+	DPV_SHELL=1 run dpv internal-instrument
 
 	assert_failure "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 }
