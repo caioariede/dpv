@@ -28,10 +28,9 @@ test_cmd_help() { # @test
 #
 
 test_cmd_list_without_any_virtualenvs() { # @test
-	run dpv list --quiet
+	run dpv list
 
 	assert_success
-	assert_output ''
 }
 
 #

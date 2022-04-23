@@ -33,10 +33,10 @@ test_cmd_help() { # @test
 test_cmd_where_with_runtime_txt() { # @test
 	setup_runtime_txt
 
-	run dpv where --quiet
+	run dpv where
 
 	assert_success
-	assert_output "$DPV_DIR/virtualenvs/3.7/test_dpv_proj-3.7"
+	assert_output -p "$DPV_DIR/virtualenvs/3.7/test_dpv_proj-3.7"
 }
 
 #
