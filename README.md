@@ -2,16 +2,20 @@
 dpv 1.0.0
 
 usage:
-  dpv             - installs virtualenv for the current directory
-  dpv help        - display these instructions
-  dpv list        - lists virtualenvs managed by dpv
-  dpv run [cmd]   - runs command inside virtualenv [default: $SHELL]
-  dpv versions    - display python versions
-    --all         - include all versions rather than a simplified list
-    --installed   - only display versions that are currently installed
-  dpv where       - display the virtualenv directory
+  dpv help             - display these instructions
+  dpv list             - list virtualenvs created with dpv
+  dpv run [command]    - run command inside virtualenv [default: $SHELL]
+    --python [version] - specify python version
+  dpv versions         - display installed python versions
+    --available        - display available ptyhon versions
+    --all              - display all versions rather than a simplified list
+
+global arguments:
+  --no-pyenv           - disable pyenv detection
+  --no-homebrew        - disable homebrew detection
 
 aliases:
+  dpv / dpv run
   dpv -h / dpv help
   dpv -l / dpv ls / dpv list
   dpv -v / dpv versions

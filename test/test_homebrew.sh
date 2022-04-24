@@ -27,19 +27,6 @@ test_cmd_help() { # @test
 }
 
 #
-# Test where command
-#
-
-test_cmd_where_with_runtime_txt() { # @test
-	setup_runtime_txt
-
-	run dpv where
-
-	assert_success
-	assert_output -p "$DPV_DIR/virtualenvs/3.7/test_dpv_proj-3.7"
-}
-
-#
 # Test versions command
 #
 
@@ -48,4 +35,24 @@ test_cmd_versions() { # @test
 
 	assert_success
 	assert_output --regexp 'homebrew:.*3\.7'
+}
+
+#
+# Test run command
+#
+
+test_cmd_run_with_runtime_txt() { # @test
+	setup_runtime_txt
+
+	run dpv run python --version
+
+	assert_success
+	assert_output -p "Python 3.7"
+}
+
+test_cmd_run_with_user_input() { # @test
+	run dpv run --python 3.9 python --version
+
+	assert_success
+	assert_output -p "Python 3.9"
 }
