@@ -34,6 +34,7 @@ set -e
 ERR_CANNOT_DETERMINE_PYTHON_VERSION=2
 ERR_CANNOT_ACTIVATE_VIRTUALENV=3
 ERR_NO_INSTALL_METHOD=4
+ERR_INVALID_ARGUMENT=5
 
 #
 # Command functions
@@ -49,6 +50,7 @@ cmd_help() {
 	echo "  dpv list             - list virtualenvs created with dpv"
 	echo "  dpv run [command]    - run command inside virtualenv [default: \$SHELL]"
 	echo "    --python [version] - specify python version"
+	echo "    --temp             - use a temporary virtualenv"
 	echo "  dpv versions         - display installed python versions"
 	echo "    --available        - display available ptyhon versions"
 	echo "    --all              - display all versions rather than a simplified list"
@@ -147,20 +149,42 @@ cmd_list() {
 }
 
 cmd_run() {
-	for i in "$@"; do
-		case "$i" in
-		--python)
+	init_config_vars
+
+	CMD=""
+
+	while [[ "$#" -gt 0 ]]; do
+		if [ "$CMD" == "" ]; then
+			case "$1" in
+			--python)
+				shift
+				ARG_PYTHON_VERSION="$1"
+				shift
+				;;
+			--temp)
+				ARG_TEMP=1
+				shift
+				;;
+			-*)
+				echo "invalid argument: $1"
+				exit "$ERR_INVALID_ARGUMENT"
+				;;
+			*)
+				CMD=" $1"
+				shift
+				;;
+			esac
+		else
+			CMD+=" $1"
 			shift
-			ARG_PYTHON_VERSION="$1"
-			shift
-			;;
-		esac
+		fi
 	done
 
-	init_config_vars
 	init_virtualenv_vars
 
-	if [ -d "$VENV_DIR" ]; then
+	CMD=${CMD:1}
+
+	if [ -f "$VENV_DIR/dpv.cfg" ]; then
 		_log "- found existing virtualenv at $VENV_DIR"
 	else
 		init_python_vars
@@ -175,13 +199,13 @@ cmd_run() {
 		exit 0
 	fi
 
-	if [ "$#" -eq 0 ]; then
+	if [ "$CMD" == "" ]; then
 		echo "dpv - python $VENV_PYTHON_VERSION activated"
 		_print_logs
 		DPV_VENV_DIR=$VENV_DIR "$SHELL"
 		trap - EXIT
 	else
-		PATH=$VENV_DIR/bin:$PATH "$@"
+		PATH=$VENV_DIR/bin:$PATH $CMD
 	fi
 }
 
@@ -260,8 +284,12 @@ init_virtualenv_vars() {
 		done <"$file"
 		if [[ "$path" == "$PWD" ]]; then
 			if [[ "$ARG_PYTHON_VERSION" == "" ]] || [[ "$ARG_PYTHON_VERSION" == "$version" ]]; then
-				VENV_DIR=$(dirname "$file")
 				VENV_PYTHON_VERSION=$version
+				if [ "$ARG_TEMP" -eq "1" ]; then
+					VENV_DIR=$(_mktemp_venv_dir)
+				else
+					VENV_DIR=$(dirname "$file")
+				fi
 			fi
 		fi
 	done < <(find "$CFG_VENVS_DIR" -name dpv.cfg -type f -mindepth 3 -maxdepth 3)
@@ -307,7 +335,11 @@ init_virtualenv_vars() {
 		exit "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 	fi
 
-	VENV_DIR=$CFG_VENVS_DIR/$VENV_PYTHON_VERSION/$(basename "$PWD")-$VENV_PYTHON_VERSION
+	if [ "$ARG_TEMP" -eq "1" ]; then
+		VENV_DIR=$(_mktemp_venv_dir)
+	else
+		VENV_DIR=${VENV_DIR:-$CFG_VENVS_DIR/$VENV_PYTHON_VERSION/$(basename "$PWD")-$VENV_PYTHON_VERSION}
+	fi
 }
 
 init_python_vars() {
@@ -415,7 +447,7 @@ main() {
 	*)
 		trap - EXIT
 		echo "dpv invalid subcommand: $CMD"
-		exit 1
+		exit "$ERR_INVALID_ARGUMENT"
 		;;
 
 	esac
@@ -540,6 +572,10 @@ _cache_installed_versions_homebrew() {
 	if [ -n "${_CACHED_INSTALLED_VERSIONS_HOMEBREW-x}" ]; then
 		_CACHED_INSTALLED_VERSIONS_HOMEBREW=$(_get_installed_versions_homebrew)
 	fi
+}
+
+_mktemp_venv_dir() {
+	mktemp -d "${TMPDIR:-/tmp/}$(basename "$PWD")-$VENV_PYTHON_VERSION.tmpXXXXX"
 }
 
 #

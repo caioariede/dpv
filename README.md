@@ -6,6 +6,7 @@ usage:
   dpv list             - list virtualenvs created with dpv
   dpv run [command]    - run command inside virtualenv [default: $SHELL]
     --python [version] - specify python version
+    --temp             - use a temporary virtualenv
   dpv versions         - display installed python versions
     --available        - display available ptyhon versions
     --all              - display all versions rather than a simplified list
@@ -19,9 +20,4 @@ aliases:
   dpv -h / dpv help
   dpv -l / dpv ls / dpv list
   dpv -v / dpv versions
-
-
-logs:
-  - pyenv is installed and is the preferred installation method
-  - homebrew is installed
 ```
