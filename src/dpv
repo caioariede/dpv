@@ -61,6 +61,7 @@ cmd_help() {
 	echo
 	echo "aliases:"
 	echo "  dpv / dpv run"
+	echo "  dpv [version] / dpv run --python [version]"
 	echo "  dpv -h / dpv help"
 	echo "  dpv -l / dpv ls / dpv list"
 	echo "  dpv -v / dpv versions"
@@ -223,7 +224,7 @@ init_config_vars() {
 	CFG_NO_PYENV=${ARG_NO_PYENV:-0}
 	CFG_NO_HOMEBREW=${ARG_NO_HOMEBREW:-0}
 
-	if [ "$CFG_NO_PYENV" -eq 1 ]; then
+	if [ "$CFG_NO_PYENV" == "1" ]; then
 		_log "- pyenv disabled"
 	elif hash pyenv 2>/dev/null; then
 		# https://stackoverflow.com/a/677212
@@ -238,7 +239,7 @@ init_config_vars() {
 		_log "- pyenv is not installed"
 	fi
 
-	if [ "$CFG_NO_HOMEBREW" -eq 1 ]; then
+	if [ "$CFG_NO_HOMEBREW" == "1" ]; then
 		_log "- homebrew disabled"
 	elif hash brew 2>/dev/null; then
 		CFG_AVAILABLE_INSTALL_METHODS+="homebrew;"
@@ -285,7 +286,7 @@ init_virtualenv_vars() {
 		if [[ "$path" == "$PWD" ]]; then
 			if [[ "$ARG_PYTHON_VERSION" == "" ]] || [[ "$ARG_PYTHON_VERSION" == "$version" ]]; then
 				VENV_PYTHON_VERSION=$version
-				if [ "$ARG_TEMP" -eq "1" ]; then
+				if [ "$ARG_TEMP" == "1" ]; then
 					VENV_DIR=$(_mktemp_venv_dir)
 				else
 					VENV_DIR=$(dirname "$file")
@@ -335,7 +336,7 @@ init_virtualenv_vars() {
 		exit "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 	fi
 
-	if [ "$ARG_TEMP" -eq "1" ]; then
+	if [ "$ARG_TEMP" == "1" ]; then
 		VENV_DIR=$(_mktemp_venv_dir)
 	else
 		VENV_DIR=${VENV_DIR:-$CFG_VENVS_DIR/$VENV_PYTHON_VERSION/$(basename "$PWD")-$VENV_PYTHON_VERSION}
@@ -428,6 +429,17 @@ main() {
 
 	list | ls | -l)
 		cmd_list
+		;;
+
+	2* | 3* | 4*)
+		if [[ "$CMD_ARGS" == *"--python"* ]]; then
+			trap - EXIT
+			echo "dpv cannot run \"dpv [version]\" with \"--python\" - use one or the other"
+			exit "$ERR_INVALID_ARGUMENT"
+		fi
+
+		# shellcheck disable=2086
+		cmd_run --python "$1" $CMD_ARGS
 		;;
 
 	run | "")

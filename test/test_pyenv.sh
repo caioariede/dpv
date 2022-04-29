@@ -63,3 +63,10 @@ test_cmd_run_with_user_input() { # @test
 	assert_success
 	assert_output -p "Python 3.9.6"
 }
+
+test_cmd_run_with_version() { # @test
+    run dpv 3.9.6 python --version
+
+	assert_success
+	assert_output -p "Python 3.9.6"
+}
