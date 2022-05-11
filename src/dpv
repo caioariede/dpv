@@ -284,12 +284,15 @@ init_virtualenv_vars() {
 			fi
 		done <"$file"
 		if [[ "$path" == "$PWD" ]]; then
-			if [[ "$ARG_PYTHON_VERSION" == "" ]] || [[ "$ARG_PYTHON_VERSION" == "$version" ]]; then
-				VENV_PYTHON_VERSION=$version
-				if [ "$ARG_TEMP" == "1" ]; then
-					VENV_DIR=$(_mktemp_venv_dir)
-				else
-					VENV_DIR=$(dirname "$file")
+			if [[ "$ARG_PYTHON_VERSION" == "" ]] || [[ "$version" == "$ARG_PYTHON_VERSION"* ]]; then
+				newer_version="$(printf "%s\n%s" "$VENV_PYTHON_VERSION" "$version" | sort --version-sort --reverse | head -n 1)"
+				if [[ "$version" == "$newer_version" ]]; then
+					VENV_PYTHON_VERSION=$version
+					if [ "$ARG_TEMP" == "1" ]; then
+						VENV_DIR=$(_mktemp_venv_dir)
+					else
+						VENV_DIR=$(dirname "$file")
+					fi
 				fi
 			fi
 		fi
@@ -305,27 +308,26 @@ init_virtualenv_vars() {
 		else
 			_log "- no $PWD/runtime.txt file found"
 		fi
-
-		# normalize python version according to install method
-		case "$CFG_INSTALL_METHOD" in
-		pyenv)
-			VENV_PYTHON_VERSION=$(echo "$VENV_PYTHON_VERSION" | __normalize_version_pyenv)
-			;;
-		homebrew)
-			VENV_PYTHON_VERSION=$(echo "$VENV_PYTHON_VERSION" | __normalize_version_homebrew)
-			;;
-		esac
 	fi
+
+	# normalize python version according to install method
+	case "$CFG_INSTALL_METHOD" in
+	pyenv)
+		VENV_PYTHON_VERSION=$(_to_latest_version_pyenv "$VENV_PYTHON_VERSION")
+		;;
+	homebrew)
+		VENV_PYTHON_VERSION=$(_to_latest_version_homebrew "$(echo "$VENV_PYTHON_VERSION" | __normalize_version_homebrew)")
+		;;
+	esac
 
 	# otherwise, prompt user about the python version
 	if [ "$VENV_PYTHON_VERSION" == "" ]; then
 		local default_version=""
 		if (_has_pyenv); then
-			_cache_installed_versions_pyenv
-			default_version=$(cut -d: -f2 <(echo "$_CACHED_INSTALLED_VERSIONS_PYENV"))
+			default_version=$(cut -d: -f2 <(_lazy_get_installed_versions_pyenv))
 		elif (_has_homebrew); then
 			_cache_installed_versions_homebrew
-			default_version=$(cut -d: -f2 <(echo "$_CACHED_INSTALLED_VERSIONS_HOMEBREW"))
+			default_version=$(cut -d: -f2 <(_lazy_get_installed_versions_homebrew))
 		fi
 		read -rp "python version [$default_version]: " VENV_PYTHON_VERSION
 		VENV_PYTHON_VERSION=${VENV_PYTHON_VERSION:-$default_version}
@@ -353,9 +355,7 @@ init_python_vars() {
 
 	case "$CFG_INSTALL_METHOD" in
 	pyenv)
-		_cache_installed_versions_pyenv
-		python_version=$(echo "$python_version" | __normalize_version_pyenv)
-		if [[ "$_CACHED_INSTALLED_VERSIONS_PYENV" != *":$python_version:"* ]]; then
+		if [[ "$(_lazy_get_installed_versions_pyenv)" != *":$python_version:"* ]]; then
 			echo "installing python $python_version using pyenv"
 			pyenv install "$python_version" 2>&1 | sed 's/^/  > /'
 			echo "ok"
@@ -367,13 +367,12 @@ init_python_vars() {
 		PY_EXECUTABLE="$PY_PREFIX/bin/python"
 		;;
 	homebrew)
-		_cache_installed_versions_homebrew
 		python_version=$(echo "$python_version" | __normalize_version_homebrew)
 		if [ "$python_version" != "$VENV_PYTHON_VERSION" ]; then
 			_log "- homebrew only supports 3.y python versions, using $python_version"
 		fi
 
-		if [[ "$_CACHED_INSTALLED_VERSIONS_HOMEBREW" != *":$python_version:"* ]]; then
+		if [[ "$_lazy_get_installed_versions_homebrew" != *":$python_version:"* ]]; then
 			echo "installing python $python_version using homebrew"
 			HOMEBREW_NO_AUTO_UPDATE=1 brew install "python@$python_version" 2>&1 | sed 's/^/  > /'
 			echo "ok"
@@ -535,7 +534,7 @@ _has_homebrew() {
 
 _get_installed_versions_pyenv() {
 	if result=$(_run_command_log_failure "pyenv versions --bare --skip-aliases"); then
-		echo "$result" | cut -d/ -f1 | uniq | sort --version-sort | __nl_to_delimited
+		echo "$result" | cut -d/ -f1 | uniq | sort --version-sort --reverse | __nl_to_delimited
 	else
 		exit 1
 	fi
@@ -586,8 +585,44 @@ _cache_installed_versions_homebrew() {
 	fi
 }
 
+_lazy_get_installed_versions_pyenv() {
+	_cache_installed_versions_pyenv
+	echo "$_CACHED_INSTALLED_VERSIONS_PYENV"
+}
+
+_lazy_get_installed_versions_homebrew() {
+	_cache_installed_versions_homebrew
+	echo "$_CACHED_INSTALLED_VERSIONS_HOMEBREW"
+}
+
 _mktemp_venv_dir() {
 	mktemp -d "${TMPDIR:-/tmp/}$(basename "$PWD")-$VENV_PYTHON_VERSION.tmpXXXXX"
+}
+
+_to_latest_version_pyenv() {
+	if [[ "$1" =~ ^[0-9]*\.[0-9]*\.[0-9]*$ ]]; then
+		echo "$1"
+	else
+		for line in $(_lazy_get_installed_versions_pyenv | sed -E 's/:/\n/g'); do
+			if [[ "$line" == "$1"* ]]; then
+				echo "$line"
+				break
+			fi
+		done
+	fi
+}
+
+_to_latest_version_homebrew() {
+	if [[ "$1" =~ ^[0-9]*\.[0-9]*$ ]]; then
+		"$(brew --prefix "python@$1")"/bin/python3 --version | cut -d\  -f2
+	else
+		for line in $(_lazy_get_installed_versions_homebrew | sed -E 's/:/\n/g'); do
+			if [[ "$line" == "$1"* ]]; then
+				"$(brew --prefix "python@$line")"/bin/python3 --version | cut -d\  -f2
+				break
+			fi
+		done
+	fi
 }
 
 #
@@ -602,11 +637,6 @@ __pretty_print_delimited_ws() {
 __nl_to_delimited() {
 	# a\nb\n\nc\n\n => :a:b:c:
 	tr '\n' ':' | sed -E 's/^|$|:+/:/g'
-}
-
-__normalize_version_pyenv() {
-	# 3.7 => 3.7.0
-	sed 's/^\([0-9]*\)\.\([0-9]*\)$/\1.\2.0/'
 }
 
 __normalize_version_homebrew() {
