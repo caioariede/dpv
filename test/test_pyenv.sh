@@ -9,7 +9,7 @@ setup() {
 }
 
 setup_runtime_txt() {
-	echo "3.9.11" >runtime.txt
+	echo "3.9.10" >runtime.txt
 }
 
 #
