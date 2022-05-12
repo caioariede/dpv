@@ -6,13 +6,10 @@ setup() {
 
 	# shellcheck source=./helper.sh
 	. "$DIR/helper.sh"
-
-	DPV_INSTALL_METHOD=pyenv
-	export DPV_INSTALL_METHOD
 }
 
 setup_runtime_txt() {
-	echo "3.7.12" >runtime.txt
+	echo "3.9.11" >runtime.txt
 }
 
 #
@@ -37,8 +34,10 @@ test_cmd_versions() { # @test
 	assert_output --regexp 'pyenv:.*3\.7'
 }
 
-test_cmd_versions_all() { # @test
-	run dpv versions --all
+test_cmd_versions_extended() { # @test
+    setup_runtime_txt
+
+	run dpv versions --extended
 
 	assert_success
 	assert_output --regexp 'pyenv:.*3\.7\.12'
@@ -48,25 +47,34 @@ test_cmd_versions_all() { # @test
 # Test run command
 #
 
-test_cmd_run_with_runtime_txt() { # @test
+test_cmd_run() { # @test
 	setup_runtime_txt
 
-	run dpv run python --version
+	run dpv run --pyenv python --version
 
 	assert_success
-	assert_output -p "Python 3.7"
+	assert_output -p "Python 3.9.11"
 }
 
-test_cmd_run_with_user_input() { # @test
-    run dpv run --python 3.9.6 python --version
+test_cmd_run_with_version_argument() { # @test
+	run dpv run --pyenv --python 3.10.3 python --version
 
 	assert_success
-	assert_output -p "Python 3.9.6"
+	assert_output -p "Python 3.10.3"
 }
 
-test_cmd_run_with_version() { # @test
-    run dpv 3.9.6 python --version
+test_cmd_run_with_version_alias() { # @test
+	run dpv 3.10.3 --pyenv python --version
 
 	assert_success
-	assert_output -p "Python 3.9.6"
+	assert_output -p "Python 3.10.3"
+}
+
+test_cmd_run_with_missing_executable() { # @test
+	setup_runtime_txt
+
+	PYENV_EXECUTABLE=NO_COMMAND run dpv --pyenv python --version
+
+	assert_failure
+    assert_output "pyenv is not installed (executable: NO_COMMAND)"
 }

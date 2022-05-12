@@ -45,19 +45,20 @@ cmd_help() {
 
 	echo "dpv $CFG_VERSION"
 	echo
-	echo "usage:"
+	echo "usage: dpv [python version]"
+	echo
+	echo "commands:"
 	echo "  dpv help             - display these instructions"
 	echo "  dpv list             - list virtualenvs created with dpv"
 	echo "  dpv run [command]    - run command inside virtualenv [default: \$SHELL]"
 	echo "    --python [version] - specify python version"
 	echo "    --temp             - use a temporary virtualenv"
-	echo "  dpv versions         - display installed python versions"
-	echo "    --available        - display available ptyhon versions"
-	echo "    --all              - display all versions rather than a simplified list"
+	echo "  dpv versions         - display available python versions"
+	echo "    --extended         - display extended list of available python versions"
 	echo
 	echo "global arguments:"
-	echo "  --no-pyenv           - disable pyenv detection"
-	echo "  --no-homebrew        - disable homebrew detection"
+	echo "  --pyenv              - use pyenv"
+	echo "  --homebrew           - use homebrew"
 	echo
 	echo "aliases:"
 	echo "  dpv / dpv run"
@@ -65,6 +66,7 @@ cmd_help() {
 	echo "  dpv -h / dpv help"
 	echo "  dpv -l / dpv ls / dpv list"
 	echo "  dpv -v / dpv versions"
+	echo "  dpv --homebrew / dpv --brew"
 	echo
 }
 
@@ -72,55 +74,78 @@ cmd_versions() {
 	init_config_vars
 
 	case "$1" in
-	"")
+	--installed)
 		echo "installed python versions"
 		echo
 		if (_has_pyenv); then
 			if result=$(_get_installed_versions_pyenv); then
-				echo "pyenv: $(echo "$result" | __pretty_print_delimited_ws)"
+				echo "pyenv: $(echo "$result" | __nl_to_space)"
 			else
 				echo "pyenv: failed, check logs"
 			fi
 		fi
 		if (_has_homebrew); then
 			if result=$(_get_installed_versions_homebrew); then
-				echo "homebrew: $(echo "$result" | __pretty_print_delimited_ws)"
+				echo "homebrew: $(echo "$result" | __nl_to_space)"
 			else
 				echo "homebrew: failed, check logs"
 			fi
 		fi
 		;;
-	--all)
-		echo "all python versions available"
+	--extended)
+		echo "available python versions (extended list)"
 		echo
 		if (_has_pyenv); then
-			if result=$(_get_all_versions_pyenv); then
-				echo "pyenv: $(echo "$result" | __pretty_print_delimited_ws)"
+			local versions=""
+			for version in $(_get_installed_versions_pyenv); do
+				versions+=":$version*:"
+			done
+			for version in $(_get_available_versions_pyenv); do
+				if [[ "$versions" != *":$version*:"* ]]; then
+					versions+=":$version:"
+				fi
+			done
+			if [[ "$versions" != "" ]]; then
+				echo "pyenv: $(echo "$versions" | __delimited_to_nl | __sort_versions | __nl_to_space)"
 			else
 				echo "pyenv: failed, check logs"
 			fi
 		fi
 		if (_has_homebrew); then
 			if result=$(_get_available_versions_homebrew); then
-				echo "homebrew: $(echo "$result" | __pretty_print_delimited_ws)"
+				echo "homebrew: $(echo "$result" | __nl_to_space)"
 			else
 				echo "homebrew: failed, check logs"
 			fi
 		fi
 		;;
-	--available)
+	"")
 		echo "available python versions"
 		echo
 		if (_has_pyenv); then
-			if result=$(_get_available_versions_pyenv); then
-				echo "pyenv: $(echo "$result" | __pretty_print_delimited_ws)"
+			local versions=""
+			local major_versions=""
+			local major_version
+			for version in $(_get_installed_versions_pyenv); do
+				versions+=":$version*:"
+				major_versions+=":$(echo "$version" | __major_version):"
+			done
+			for version in $(_get_available_versions_pyenv | grep "^[3-9.]\+$"); do
+				major_version=$(echo "$version" | __major_version)
+				if [[ "$major_versions" != *":$major_version:"* ]]; then
+					versions+=":$version:"
+				fi
+				major_versions+=":$major_version:"
+			done
+			if [[ "$versions" != "" ]]; then
+				echo "pyenv: $(echo "$versions" | __delimited_to_nl | __sort_versions | __nl_to_space)"
 			else
 				echo "pyenv: failed, check logs"
 			fi
 		fi
 		if (_has_homebrew); then
 			if result=$(_get_available_versions_homebrew); then
-				echo "homebrew: $(echo "$result" | __pretty_print_delimited_ws)"
+				echo "homebrew: $(echo "$result" | __nl_to_space)"
 			else
 				echo "homebrew: failed, check logs"
 			fi
@@ -219,14 +244,22 @@ init_config_vars() {
 	# Initialize CFG_* variables
 	#
 	CFG_LOG_FILE=$(mktemp "${TMPDIR:-/tmp/}dpv_logs.XXXXX")
-	CFG_INSTALL_METHOD="${DPV_INSTALL_METHOD}"
 	CFG_AVAILABLE_INSTALL_METHODS=""
-	CFG_NO_PYENV=${ARG_NO_PYENV:-0}
-	CFG_NO_HOMEBREW=${ARG_NO_HOMEBREW:-0}
+	CFG_PYENV_EXECUTABLE="${PYENV_EXECUTABLE:-$(which pyenv)}"
+	CFG_HOMEBREW_EXECUTABLE="${HOMEBREW_EXECUTABLE:-$(which brew)}"
+	CFG_USE_PYENV=${ARG_USE_PYENV:-0}
+	CFG_USE_HOMEBREW=${ARG_USE_HOMEBREW:-0}
 
-	if [ "$CFG_NO_PYENV" == "1" ]; then
-		_log "- pyenv disabled"
-	elif hash pyenv 2>/dev/null; then
+	if [ "$CFG_USE_PYENV $CFG_USE_HOMEBREW" == "1 1" ]; then
+		echo "you should specify either --pyenv or --homebrew, not both"
+		exit $ERR_INVALID_ARGUMENT
+	elif [ "$CFG_USE_PYENV" == "1" ]; then
+		CFG_INSTALL_METHOD="pyenv"
+	elif [ "$CFG_USE_HOMEBREW" == "1" ]; then
+		CFG_INSTALL_METHOD="homebrew"
+	fi
+
+	if hash "$CFG_PYENV_EXECUTABLE" 2>/dev/null; then
 		# https://stackoverflow.com/a/677212
 		CFG_AVAILABLE_INSTALL_METHODS+="pyenv;"
 		if [ "$CFG_INSTALL_METHOD" == "" ] || [ "$CFG_INSTALL_METHOD" == "pyenv" ]; then
@@ -236,12 +269,15 @@ init_config_vars() {
 			_log "- pyenv is installed"
 		fi
 	else
-		_log "- pyenv is not installed"
+		if [ "$CFG_USE_PYENV" == "1" ]; then
+			echo "pyenv is not installed (executable: $CFG_PYENV_EXECUTABLE)"
+			exit "$ERR_INVALID_ARGUMENT"
+		fi
+
+		_log "- pyenv is not installed (executable: $CFG_PYENV_EXECUTABLE)"
 	fi
 
-	if [ "$CFG_NO_HOMEBREW" == "1" ]; then
-		_log "- homebrew disabled"
-	elif hash brew 2>/dev/null; then
+	if hash "$CFG_HOMEBREW_EXECUTABLE" 2>/dev/null; then
 		CFG_AVAILABLE_INSTALL_METHODS+="homebrew;"
 		if [ "$CFG_INSTALL_METHOD" == "" ] || [ "$CFG_INSTALL_METHOD" == "homebrew" ]; then
 			_log "- homebrew is installed and is the preferred installation method"
@@ -250,7 +286,12 @@ init_config_vars() {
 			_log "- homebrew is installed"
 		fi
 	else
-		_log "- homebrew is not installed"
+		if [ "$CFG_USE_HOMEBREW" == "1" ]; then
+			echo "homebrew is not installed (executable: $CFG_HOMEBREW_EXECUTABLE)"
+			exit "$ERR_INVALID_ARGUMENT"
+		fi
+
+		_log "- homebrew is not installed (executable: $CFG_HOMEBREW_EXECUTABLE)"
 	fi
 
 	if [ "$CFG_INSTALL_METHOD" == "" ]; then
@@ -285,7 +326,7 @@ init_virtualenv_vars() {
 		done <"$file"
 		if [[ "$path" == "$PWD" ]]; then
 			if [[ "$ARG_PYTHON_VERSION" == "" ]] || [[ "$version" == "$ARG_PYTHON_VERSION"* ]]; then
-				newer_version="$(printf "%s\n%s" "$VENV_PYTHON_VERSION" "$version" | sort --version-sort --reverse | head -n 1)"
+				newer_version="$(printf "%s\n%s" "$VENV_PYTHON_VERSION" "$version" | __sort_versions | head -n 1)"
 				if [[ "$version" == "$newer_version" ]]; then
 					VENV_PYTHON_VERSION=$version
 					if [ "$ARG_TEMP" == "1" ]; then
@@ -310,24 +351,13 @@ init_virtualenv_vars() {
 		fi
 	fi
 
-	# normalize python version according to install method
-	case "$CFG_INSTALL_METHOD" in
-	pyenv)
-		VENV_PYTHON_VERSION=$(_to_latest_version_pyenv "$VENV_PYTHON_VERSION")
-		;;
-	homebrew)
-		VENV_PYTHON_VERSION=$(_to_latest_version_homebrew "$(echo "$VENV_PYTHON_VERSION" | __normalize_version_homebrew)")
-		;;
-	esac
-
 	# otherwise, prompt user about the python version
 	if [ "$VENV_PYTHON_VERSION" == "" ]; then
 		local default_version=""
 		if (_has_pyenv); then
-			default_version=$(cut -d: -f2 <(_lazy_get_installed_versions_pyenv))
+			default_version=$(cut -d: -f2 <(_get_installed_versions_pyenv) <(_get_available_versions_pyenv))
 		elif (_has_homebrew); then
-			_cache_installed_versions_homebrew
-			default_version=$(cut -d: -f2 <(_lazy_get_installed_versions_homebrew))
+			default_version=$(cut -d: -f2 <(_get_installed_versions_homebrew) <(_get_available_versions_homebrew))
 		fi
 		read -rp "python version [$default_version]: " VENV_PYTHON_VERSION
 		VENV_PYTHON_VERSION=${VENV_PYTHON_VERSION:-$default_version}
@@ -336,6 +366,22 @@ init_virtualenv_vars() {
 
 	if [ "$VENV_PYTHON_VERSION" == "" ]; then
 		exit "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
+	fi
+
+	# normalize python version according to install method
+	local version
+	case "$CFG_INSTALL_METHOD" in
+	pyenv)
+		version=$(_resolve_version_pyenv "$VENV_PYTHON_VERSION")
+		;;
+	homebrew)
+		version=$(_resolve_version_homebrew "$(echo "$VENV_PYTHON_VERSION" | __normalize_version_homebrew)")
+		;;
+	esac
+
+	if [ "$VENV_PYTHON_VERSION" != "$version" ]; then
+		_log "- python version $VENV_PYTHON_VERSION resolved to $version"
+		VENV_PYTHON_VERSION=$version
 	fi
 
 	if [ "$ARG_TEMP" == "1" ]; then
@@ -355,15 +401,15 @@ init_python_vars() {
 
 	case "$CFG_INSTALL_METHOD" in
 	pyenv)
-		if [[ "$(_lazy_get_installed_versions_pyenv)" != *":$python_version:"* ]]; then
+		if [[ "$(_get_installed_versions_pyenv | __nl_to_delimited)" != *":$python_version:"* ]]; then
 			echo "installing python $python_version using pyenv"
-			pyenv install "$python_version" 2>&1 | sed 's/^/  > /'
+			_exec_pyenv install "$python_version" 2>&1 | sed 's/^/  > /'
 			echo "ok"
 		else
 			_log "- python $python_version is currently installed by pyenv"
 		fi
 
-		PY_PREFIX=$(pyenv prefix "$python_version")
+		PY_PREFIX=$(_exec_pyenv prefix "$python_version")
 		PY_EXECUTABLE="$PY_PREFIX/bin/python"
 		;;
 	homebrew)
@@ -372,13 +418,13 @@ init_python_vars() {
 			_log "- homebrew only supports 3.y python versions, using $python_version"
 		fi
 
-		if [[ "$_lazy_get_installed_versions_homebrew" != *":$python_version:"* ]]; then
+		if [[ "$(_get_installed_versions_homebrew)" != *":$python_version:"* ]]; then
 			echo "installing python $python_version using homebrew"
 			HOMEBREW_NO_AUTO_UPDATE=1 brew install "python@$python_version" 2>&1 | sed 's/^/  > /'
 			echo "ok"
 		fi
 
-		PY_PREFIX=$(brew --prefix "python@$python_version")
+		PY_PREFIX=$(_exec_homebrew --prefix "python@$python_version")
 		PY_EXECUTABLE="$PY_PREFIX/bin/python3"
 		;;
 	esac
@@ -397,24 +443,28 @@ main() {
 	# parse global arguments
 	for i in "$@"; do
 		case $i in
-		--no-pyenv)
-			ARG_NO_PYENV=1
+		--pyenv)
+			ARG_USE_PYENV=1
 			;;
-		--no-homebrew)
-			ARG_NO_HOMEBREW=1
+		--homebrew | --brew)
+			ARG_USE_HOMEBREW=1
 			;;
 		--*)
-			if [ "$CMD" == "" ]; then
-				CMD="run"
-			fi
 			CMD_ARGS+=" $i"
 			;;
 		*)
-			if [ "$CMD" == "" ]; then
-				CMD="$i"
-			else
+			case "$i" in
+			internal-instrument | list | ls | -l | 2* | 3* | 4* | run | versions | -v | help | -h)
+				if [ "$CMD" == "" ]; then
+					CMD="$i"
+				else
+					CMD_ARGS+=" $i"
+				fi
+				;;
+			*)
 				CMD_ARGS+=" $i"
-			fi
+				;;
+			esac
 			;;
 		esac
 	done
@@ -483,6 +533,10 @@ error_handling() {
 		echo "no installation method to pick"
 		;;
 
+	"$ERR_INVALID_ARGUMENT")
+		exit
+		;;
+
 	esac
 
 	if [ -z "${DPV_INSTRUMENT+x}" ]; then
@@ -498,6 +552,14 @@ error_handling() {
 #
 # Short-hand functions
 #
+
+_exec_pyenv() {
+	"$CFG_PYENV_EXECUTABLE" "$@"
+}
+
+_exec_homebrew() {
+	"$CFG_HOMEBREW_EXECUTABLE" "$@"
+}
 
 _log() {
 	echo -e "$@" >>"$CFG_LOG_FILE"
@@ -533,92 +595,84 @@ _has_homebrew() {
 }
 
 _get_installed_versions_pyenv() {
-	if result=$(_run_command_log_failure "pyenv versions --bare --skip-aliases"); then
-		echo "$result" | cut -d/ -f1 | uniq | sort --version-sort --reverse | __nl_to_delimited
-	else
-		exit 1
-	fi
-}
-
-_get_all_versions_pyenv() {
-	if result=$(_run_command_log_failure "pyenv install --list"); then
-		echo "$result" | sed 's/ //g' | tail -n +2 | __nl_to_delimited
-	else
-		exit 1
-	fi
-}
-
-_get_available_versions_pyenv() {
-	local supported_python_versions_grep_regex='^\(3\.\([789]\|1[^.]\)\.0$\)\|^\(4\.[0-9]\+\.0$\)'
-	if result=$(_run_command_log_failure "pyenv install --list"); then
-		echo "$result" | sed 's/ //g' | grep "$supported_python_versions_grep_regex" | __nl_to_delimited
-	else
-		exit 1
-	fi
-}
-
-_get_available_versions_homebrew() {
-	if result=$(_run_command_log_failure "brew search python"); then
-		echo "$result" | grep -o 'python@[^ ]\+' | cut -d@ -f2 | sort --version-sort | __nl_to_delimited
-	else
-		exit 1
-	fi
-}
-
-_get_installed_versions_homebrew() {
-	if result=$(_run_command_log_failure "brew list"); then
-		echo "$result" | grep 'python@' | cut -d@ -f2 | sort --version-sort | __nl_to_delimited
-	else
-		exit 1
-	fi
-}
-
-_cache_installed_versions_pyenv() {
 	if [ -n "${_CACHED_INSTALLED_VERSIONS_PYENV-x}" ]; then
-		_CACHED_INSTALLED_VERSIONS_PYENV=$(_get_installed_versions_pyenv)
+		if result=$(_run_command_log_failure "$CFG_PYENV_EXECUTABLE versions --bare --skip-aliases"); then
+			result=$(echo "$result" | cut -d/ -f1 | uniq | __sort_versions)
+			_CACHED_INSTALLED_VERSIONS_PYENV=$result
+		else
+			exit 1
+		fi
 	fi
-}
-
-_cache_installed_versions_homebrew() {
-	if [ -n "${_CACHED_INSTALLED_VERSIONS_HOMEBREW-x}" ]; then
-		_CACHED_INSTALLED_VERSIONS_HOMEBREW=$(_get_installed_versions_homebrew)
-	fi
-}
-
-_lazy_get_installed_versions_pyenv() {
-	_cache_installed_versions_pyenv
 	echo "$_CACHED_INSTALLED_VERSIONS_PYENV"
 }
 
-_lazy_get_installed_versions_homebrew() {
-	_cache_installed_versions_homebrew
+_get_available_versions_pyenv() {
+	if [ -n "${_CACHED_AVAILABLE_VERSIONS_PYENV-x}" ]; then
+		if result=$(_run_command_log_failure "$CFG_PYENV_EXECUTABLE install --list"); then
+			result=$(echo "$result" | sed 's/ //g' | __sort_versions)
+			_CACHED_AVAILABLE_VERSIONS_PYENV=$result
+		else
+			exit 1
+		fi
+	fi
+	echo "$_CACHED_AVAILABLE_VERSIONS_PYENV"
+}
+
+_get_available_versions_homebrew() {
+	if [ -n "${_CACHED_AVAILABLE_VERSIONS_HOMEBREW-x}" ]; then
+		if result=$(_run_command_log_failure "$CFG_HOMEBREW_EXECUTABLE search python"); then
+			result=$(echo "$result" | grep -o 'python@[^ ]\+' | cut -d@ -f2 | __sort_versions)
+			_CACHED_AVAILABLE_VERSIONS_HOMEBREW=$result
+		else
+			exit 1
+		fi
+	fi
+	echo "$_CACHED_AVAILABLE_VERSIONS_HOMEBREW"
+}
+
+_get_installed_versions_homebrew() {
+	if [ -n "${_CACHED_INSTALLED_VERSIONS_HOMEBREW-x}" ]; then
+		if result=$(_run_command_log_failure "$CFG_HOMEBREW_EXECUTABLE list"); then
+			result=$(echo "$result" | grep 'python@' | cut -d@ -f2 | __sort_versions)
+			_CACHED_INSTALLED_VERSIONS_HOMEBREW=$result
+		else
+			exit 1
+		fi
+	fi
+
 	echo "$_CACHED_INSTALLED_VERSIONS_HOMEBREW"
+}
+
+_get_all_versions_homebrew() {
+	printf "%s\n%s" "$(_get_installed_versions_homebrew)" "$(_get_available_versions_homebrew)" | sed 's/\n\n*/\n/g'
 }
 
 _mktemp_venv_dir() {
 	mktemp -d "${TMPDIR:-/tmp/}$(basename "$PWD")-$VENV_PYTHON_VERSION.tmpXXXXX"
 }
 
-_to_latest_version_pyenv() {
-	if [[ "$1" =~ ^[0-9]*\.[0-9]*\.[0-9]*$ ]]; then
-		echo "$1"
-	else
-		for line in $(_lazy_get_installed_versions_pyenv | sed -E 's/:/\n/g'); do
-			if [[ "$line" == "$1"* ]]; then
-				echo "$line"
-				break
-			fi
-		done
-	fi
+_resolve_version_pyenv() {
+	local versions
+	versions="$(_get_installed_versions_pyenv)$(_get_available_versions_pyenv)"
+
+	for line in $(echo "$versions" | sed -E 's/:/\n/g'); do
+		if [[ "$line" == "$1."* ]] || [[ "$line" == "$1" ]]; then
+			echo "$line"
+			exit
+		fi
+	done
+
+	_log "- cannot resolve version $1 (available versions are: $(echo "$versions" | __sort_versions | __nl_to_space))"
+	exit 1
 }
 
-_to_latest_version_homebrew() {
+_resolve_version_homebrew() {
 	if [[ "$1" =~ ^[0-9]*\.[0-9]*$ ]]; then
-		"$(brew --prefix "python@$1")"/bin/python3 --version | cut -d\  -f2
+		"$(_exec_homebrew --prefix "python@$1")"/bin/python3 --version | cut -d\  -f2
 	else
-		for line in $(_lazy_get_installed_versions_homebrew | sed -E 's/:/\n/g'); do
-			if [[ "$line" == "$1"* ]]; then
-				"$(brew --prefix "python@$line")"/bin/python3 --version | cut -d\  -f2
+		for line in $(_get_installed_versions_homebrew); do
+			if [[ "$line" == "$1."* ]]; then
+				"$(_exec_homebrew --prefix "python@$line")"/bin/python3 --version | cut -d\  -f2
 				break
 			fi
 		done
@@ -626,22 +680,33 @@ _to_latest_version_homebrew() {
 }
 
 #
-# Utilities
+# Utilities that work over stdin
 #
-
-__pretty_print_delimited_ws() {
-	# Transforms multiple lines in one separated by spaces
-	sed -E 's/^:|:$//g' | tr ':' ' '
-}
 
 __nl_to_delimited() {
 	# a\nb\n\nc\n\n => :a:b:c:
 	tr '\n' ':' | sed -E 's/^|$|:+/:/g'
 }
 
+__nl_to_space() {
+	tr '\n' ' '
+}
+
+__delimited_to_nl() {
+	sed -E 's/^:*|:*$//g' | sed -E 's/::*/ /g'
+}
+
 __normalize_version_homebrew() {
 	# 3.7.12 => 3.7
 	sed 's/^\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)$/\1.\2/'
+}
+
+__sort_versions() {
+	sort --version-sort --reverse
+}
+
+__major_version() {
+	cut -d. -f1,2
 }
 
 main "$@"

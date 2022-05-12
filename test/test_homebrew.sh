@@ -6,13 +6,10 @@ setup() {
 
 	# shellcheck source=./helper.sh
 	. "$DIR/helper.sh"
-
-	DPV_INSTALL_METHOD=homebrew
-	export DPV_INSTALL_METHOD
 }
 
 setup_runtime_txt() {
-	echo "3.7.12" >runtime.txt
+	echo "3.9.11" >runtime.txt
 }
 
 #
@@ -20,7 +17,7 @@ setup_runtime_txt() {
 #
 
 test_cmd_help() { # @test
-	run dpv help
+	run dpv help --homebrew
 
 	assert_success
 	assert_output -p 'homebrew is installed and is the preferred installation method'
@@ -31,6 +28,8 @@ test_cmd_help() { # @test
 #
 
 test_cmd_versions() { # @test
+    setup_runtime_txt
+
 	run dpv versions
 
 	assert_success
@@ -41,25 +40,34 @@ test_cmd_versions() { # @test
 # Test run command
 #
 
-test_cmd_run_with_runtime_txt() { # @test
+test_cmd_run() { # @test
 	setup_runtime_txt
 
 	run dpv run python --version
 
 	assert_success
-	assert_output -p "Python 3.7"
-}
-
-test_cmd_run_with_user_input() { # @test
-	run dpv run --python 3.9 python --version
-
-	assert_success
 	assert_output -p "Python 3.9"
 }
 
-test_cmd_run_with_version() { # @test
-    run dpv 3.9 python --version
+test_cmd_run_with_version_argument() { # @test
+	run dpv run --python 3.10 --homebrew python --version
 
 	assert_success
-	assert_output -p "Python 3.9"
+	assert_output -p "Python 3.10"
+}
+
+test_cmd_run_with_version_alias() { # @test
+	run dpv 3.10 --homebrew python --version
+
+	assert_success
+	assert_output -p "Python 3.10"
+}
+
+test_cmd_run_with_missing_executable() { # @test
+	setup_runtime_txt
+
+	HOMEBREW_EXECUTABLE=NO_COMMAND run dpv --homebrew python --version
+
+	assert_failure
+	assert_output "homebrew is not installed (executable: NO_COMMAND)"
 }
