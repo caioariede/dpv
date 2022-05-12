@@ -106,14 +106,14 @@ cmd_versions() {
 				fi
 			done
 			if [[ "$versions" != "" ]]; then
-				echo "pyenv: $(echo "$versions" | __delimited_to_nl | __sort_versions | __nl_to_space)"
+				printf "pyenv: $(echo -e "$versions" | __delimited_to_nl | __sort_versions | _highlight_installed_pyenv | __nl_to_space)\n"
 			else
 				echo "pyenv: failed, check logs"
 			fi
 		fi
 		if (_has_homebrew); then
 			if result=$(_get_available_versions_homebrew); then
-				echo "homebrew: $(echo "$result" | __nl_to_space)"
+				printf "homebrew: $(echo "$result" | __sort_versions | _highlight_installed_homebrew | __nl_to_space)\n"
 			else
 				echo "homebrew: failed, check logs"
 			fi
@@ -123,13 +123,14 @@ cmd_versions() {
 		echo "available python versions"
 		echo
 		if (_has_pyenv); then
-			local versions=""
+			local installed_versions=""
 			local major_versions=""
 			local major_version
 			for version in $(_get_installed_versions_pyenv); do
-				versions+=":$version*:"
+				installed_versions+=":$version:"
 				major_versions+=":$(echo "$version" | __major_version):"
 			done
+			local versions="$installed_versions"
 			for version in $(_get_available_versions_pyenv | grep "^[3-9.]\+$"); do
 				major_version=$(echo "$version" | __major_version)
 				if [[ "$major_versions" != *":$major_version:"* ]]; then
@@ -138,14 +139,14 @@ cmd_versions() {
 				major_versions+=":$major_version:"
 			done
 			if [[ "$versions" != "" ]]; then
-				echo "pyenv: $(echo "$versions" | __delimited_to_nl | __sort_versions | __nl_to_space)"
+				printf "pyenv: $(echo -n "$versions" | __delimited_to_nl | __sort_versions | _highlight_installed_pyenv | __nl_to_space)\n"
 			else
 				echo "pyenv: failed, check logs"
 			fi
 		fi
 		if (_has_homebrew); then
 			if result=$(_get_available_versions_homebrew); then
-				echo "homebrew: $(echo "$result" | __nl_to_space)"
+				printf "homebrew: $(echo "$result" | __sort_versions | _highlight_installed_homebrew | __nl_to_space)\n"
 			else
 				echo "homebrew: failed, check logs"
 			fi
@@ -603,7 +604,7 @@ _get_installed_versions_pyenv() {
 			exit 1
 		fi
 	fi
-	echo "$_CACHED_INSTALLED_VERSIONS_PYENV"
+	echo -n "$_CACHED_INSTALLED_VERSIONS_PYENV"
 }
 
 _get_available_versions_pyenv() {
@@ -615,7 +616,7 @@ _get_available_versions_pyenv() {
 			exit 1
 		fi
 	fi
-	echo "$_CACHED_AVAILABLE_VERSIONS_PYENV"
+	echo -n "$_CACHED_AVAILABLE_VERSIONS_PYENV"
 }
 
 _get_available_versions_homebrew() {
@@ -627,7 +628,7 @@ _get_available_versions_homebrew() {
 			exit 1
 		fi
 	fi
-	echo "$_CACHED_AVAILABLE_VERSIONS_HOMEBREW"
+	echo -n "$_CACHED_AVAILABLE_VERSIONS_HOMEBREW"
 }
 
 _get_installed_versions_homebrew() {
@@ -640,7 +641,7 @@ _get_installed_versions_homebrew() {
 		fi
 	fi
 
-	echo "$_CACHED_INSTALLED_VERSIONS_HOMEBREW"
+	echo -n "$_CACHED_INSTALLED_VERSIONS_HOMEBREW"
 }
 
 _get_all_versions_homebrew() {
@@ -679,6 +680,18 @@ _resolve_version_homebrew() {
 	fi
 }
 
+_highlight_installed_pyenv() {
+	local regex
+	regex=$(_get_installed_versions_pyenv | sed -E 's/(\.)/\\\1/g' | tr '\n' '|')
+	sed -E "s/($regex)/\\\e[38;5;81m\\1*\\\e[0m/g"
+}
+
+_highlight_installed_homebrew() {
+	local regex
+	regex=$(_get_installed_versions_homebrew | sed -E 's/(\.)/\\\1/g' | tr '\n' '|')
+	sed -E "s/($regex)/\\\e[38;5;81m\\1*\\\e[0m/g"
+}
+
 #
 # Utilities that work over stdin
 #
@@ -693,7 +706,7 @@ __nl_to_space() {
 }
 
 __delimited_to_nl() {
-	sed -E 's/^:*|:*$//g' | sed -E 's/::*/ /g'
+	sed -E 's/^:*|:*$//g' | sed -E 's/::*/\n/g'
 }
 
 __normalize_version_homebrew() {
