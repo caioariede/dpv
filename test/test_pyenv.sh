@@ -53,7 +53,7 @@ test_cmd_run() { # @test
 	run dpv run --pyenv python --version
 
 	assert_success
-	assert_output -p "Python 3.9.11"
+	assert_output -p "Python 3.9.10"
 }
 
 test_cmd_run_with_version_argument() { # @test
