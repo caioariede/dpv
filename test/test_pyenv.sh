@@ -9,7 +9,7 @@ setup() {
 }
 
 setup_runtime_txt() {
-	echo "3.9.11" >runtime.txt
+	echo "3.9.10" >runtime.txt
 }
 
 #
@@ -53,21 +53,21 @@ test_cmd_run() { # @test
 	run dpv run --pyenv python --version
 
 	assert_success
-	assert_output -p "Python 3.9.11"
+	assert_output -p "Python 3.9.10"
 }
 
 test_cmd_run_with_version_argument() { # @test
-	run dpv run --pyenv --python 3.10.3 python --version
+	run dpv run --pyenv --python 3.10.2 python --version
 
 	assert_success
-	assert_output -p "Python 3.10.3"
+	assert_output -p "Python 3.10.2"
 }
 
 test_cmd_run_with_version_alias() { # @test
-	run dpv 3.10.3 --pyenv python --version
+	run dpv 3.10.2 --pyenv python --version
 
 	assert_success
-	assert_output -p "Python 3.10.3"
+	assert_output -p "Python 3.10.2"
 }
 
 test_cmd_run_with_missing_executable() { # @test
