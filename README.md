@@ -6,6 +6,10 @@
 ![Platform](https://img.shields.io/badge/platform-linux%20and%20macos-lightgrey)
 ![GitHub](https://img.shields.io/github/license/caioariede/dpv)
 
+![dpv](https://user-images.githubusercontent.com/55533/229202838-c2e73bbd-3943-43d1-8c3f-be02f64a88db.gif)
+
+## Manual
+
 ```
 dpv 0.9.0
 
