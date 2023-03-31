@@ -61,6 +61,24 @@ eval "$(dpv internal-instrument)"
 dpv --temp # this won't create any files in the current directory
 ```
 
+## Install a theme (optional)
+
+Yes, you can customize dpv's appearance :)
+
+First, download the theme:
+
+```bash
+curl -sfSLO --create-dirs --output-dir ~/.dpv/themes/ https://raw.githubusercontent.com/caioariede/dpv/HEAD/themes/creator.sh
+```
+
+And add the following line to your .bashrc, .zshrc, etc (can be before or after dpv setup)
+
+```bash
+DPV_THEME=~/.dpv/themes/creator.sh
+```
+
+_Feel free to submit your own theme with a PR. Unfortunately right now there's no documentation around that, take a shot!_
+
 ## Command Comparison
 
 | command                                     | dpv          | poetry                   |
