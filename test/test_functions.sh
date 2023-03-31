@@ -152,22 +152,22 @@ setup_pyenv_mock() {
 	fi
 }
 
-test_unsafe_pyenv_resolve_python_version() { # @test
+test_pyenv_resolve_python_version() { # @test
 	test_fn() {
-		echo 2.7 | unsafe_pyenv_resolve_python_version
+		echo 2.7 | pyenv_resolve_python_version
 	}
 	run test_fn
 	assert_success
 	assert_output "2.7.18"
 }
 
-test_unsafe_pyenv_resolve_python_version_not_available() { # @test
+test_pyenv_resolve_python_version_not_available() { # @test
 	test_fn() {
-		echo "99.9" | unsafe_pyenv_resolve_python_version
+		echo "99.9" | pyenv_resolve_python_version
 	}
 	run test_fn
-	assert_failure
-	assert_log_output --partial "cannot resolve version 99.9"
+	assert_success
+    assert_output ""
 }
 
 test_pyenv_load_available_python_versions() { # @test
@@ -281,22 +281,22 @@ test_homebrew_load_installed_python_versions() { # @test
 	assert_success
 }
 
-test_unsafe_homebrew_resolve_python_version() { # @test
+test_homebrew_resolve_python_version() { # @test
 	test_fn() {
-		echo "$TEST_CONFIG_MAJOR_PYTHON_VERSION" | unsafe_homebrew_resolve_python_version
+		echo "$TEST_CONFIG_MAJOR_PYTHON_VERSION" | homebrew_resolve_python_version
 	}
 	run test_fn
 	assert_success
 	assert_output --partial "$TEST_CONFIG_MAJOR_PYTHON_VERSION."
 }
 
-test_unsafe_homebrew_resolve_python_version_not_available() { # @test
+test_homebrew_resolve_python_version_not_available() { # @test
 	test_fn() {
-		echo "99.9" | unsafe_homebrew_resolve_python_version
+		echo "99.9" | homebrew_resolve_python_version
 	}
 	run test_fn
-	assert_failure
-	assert_log_output --partial "cannot resolve version 99.9"
+	assert_success
+	assert_output ""
 }
 
 test_homebrew_format_python_formula() { # @test

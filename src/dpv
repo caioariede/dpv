@@ -388,7 +388,10 @@ unsafe_init_virtualenv_vars() {
 			local installed_versions=${!installed_versions_var}
 			local available_versions=${!available_versions_var}
 
-			resolved_version=$(unsafe_${install}_resolve_python_version <<<"$INTERNAL_VENV_PYTHON_VERSION")
+			resolved_version=$(${install}_resolve_python_version <<<"$INTERNAL_VENV_PYTHON_VERSION")
+			if dpv_check_string_is_empty "$resolved_version"; then
+				continue
+			fi
 
 			if [[ "$installed_versions" == *"$resolved_version"* ]]; then
 				from_installed="$install"
@@ -773,7 +776,7 @@ pyenv_load_available_python_versions() {
 	fi
 }
 
-unsafe_pyenv_resolve_python_version() {
+pyenv_resolve_python_version() {
 	while read -r line; do
 		local resolved_version=""
 		local available_version="none"
@@ -801,11 +804,10 @@ unsafe_pyenv_resolve_python_version() {
 			done <<<"$INTERNAL_PYENV_AVAILABLE_PYTHON_VERSIONS"
 		fi
 
-		if dpv_check_string_is_empty "$resolved_version"; then
-			dpv_internal_log "pyenv: cannot resolve version $line (available version: $available_version)"
-			exit "$ERR_CANNOT_RESOLVE_PYTHON_VERSION"
-		else
+		if ! dpv_check_string_is_empty "$resolved_version"; then
 			echo $resolved_version
+		elif [[ "$available_version" != "none" ]]; then
+			echo $available_version
 		fi
 	done
 }
@@ -867,7 +869,7 @@ homebrew_format_python_formula() {
 	done
 }
 
-unsafe_homebrew_resolve_python_version() {
+homebrew_resolve_python_version() {
 	homebrew_load_available_python_versions
 
 	while read -r line; do
@@ -885,8 +887,6 @@ unsafe_homebrew_resolve_python_version() {
 				continue
 			fi
 		fi
-		dpv_internal_log "homebrew: cannot resolve version $line (available version: $available_version)"
-		exit "$ERR_CANNOT_RESOLVE_PYTHON_VERSION"
 	done
 }
 
