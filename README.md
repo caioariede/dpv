@@ -36,3 +36,42 @@ aliases:
   dpv versions / -v
   dpv versions --all / -a
 ```
+
+## Comparison
+
+### Initialize virtualenv
+
+#### Context
+A specific Python version is specified (pyproject.toml, runtime.txt)
+
+#### dpv
+
+```
+$ dpv
+python version [selected: 3.9.14 source: runtime.txt]:
+installing python 3.9.14 using pyenv
+  > python-build: use openssl@1.1 from homebrew
+  > python-build: use readline from homebrew
+  > Downloading Python-3.9.14.tar.xz...
+  > -> https://www.python.org/ftp/python/3.9.14/Python-3.9.14.tar.xz
+  > Installing Python-3.9.14...
+  > python-build: use tcl-tk from homebrew
+  > python-build: use readline from homebrew
+  > python-build: use zlib from xcode sdk
+  ...
+```
+
+#### poetry
+
+```
+$ poetry shell
+The currently activated Python version 3.11.2 is not supported by the project (3.9.14).
+Trying to find and use a compatible version.
+
+Poetry was unable to find a compatible version. If you have one, you can explicitly use it via the "env use" command.
+```
+
+
+
+
+
