@@ -42,11 +42,13 @@ aliases:
 ### Initialize virtualenv
 
 #### Context
-A specific Python version is specified (pyproject.toml, runtime.txt)
+
+* A specific Python version is specified (pyproject.toml, runtime.txt)
+* homebrew & pyenv are both installed
 
 #### dpv
 
-```
+```bash
 $ dpv
 python version [selected: 3.9.14 source: runtime.txt]:
 installing python 3.9.14 using pyenv
@@ -58,12 +60,20 @@ installing python 3.9.14 using pyenv
   > python-build: use tcl-tk from homebrew
   > python-build: use readline from homebrew
   > python-build: use zlib from xcode sdk
-  ...
+  > Installed Python-3.9.14 to /Users/caio/.pyenv/versions/3.9.14
+  >
+done
+dpv - ds-packages-3.9.14 activated
+
+logs:
+  - pyenv method selected
+  - pyenv: version 3.9.14 needs to be installed
+  - created new virtualenv: ds-packages-3.9.14
 ```
 
 #### poetry
 
-```
+```bash
 $ poetry shell
 The currently activated Python version 3.11.2 is not supported by the project (3.9.14).
 Trying to find and use a compatible version.
