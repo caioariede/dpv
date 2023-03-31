@@ -1,3 +1,11 @@
+**the dead simple Python virtualenv manager** *for the stoic programmer 🪚*
+
+[![CI](https://github.com/caioariede/dpv/actions/workflows/ci.yml/badge.svg)](https://github.com/caioariede/dpv/actions/workflows/ci.yml)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/caioariede/dpv)
+![GitHub file size in bytes](https://img.shields.io/github/size/caioariede/dpv/src/dpv)
+![Platform](https://img.shields.io/badge/platform-linux%20and%20macos-lightgrey)
+![GitHub](https://img.shields.io/github/license/caioariede/dpv)
+
 ```
 dpv 0.9.0
 
