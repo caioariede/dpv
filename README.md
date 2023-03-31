@@ -39,8 +39,22 @@ aliases:
 
 ## Installation
 
+1. **Download**
+
 ```bash
 bash -c 'curl -fsSLo $1 https://raw.githubusercontent.com/caioariede/dpv/HEAD/src/dpv && chmod +x $1' -- /usr/local/bin/dpv
+```
+
+2. **Configure** — Add the following line to your .bashrc, .zshrc, etc
+
+```bash
+eval "$(dpv internal-instrument)"
+```
+
+3. **Try it**
+
+```bash
+dpv --temp # this won't create any files in the current directory
 ```
 
 ## Command Comparison
