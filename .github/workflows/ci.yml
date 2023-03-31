@@ -36,7 +36,7 @@ jobs:
         with:
           default: "${{ matrix.python }}"
 
-      - run: ./runtest.sh "${{ matrix.installer }}"
+      - run: ./runtest.sh test/test_functions.sh --filter "${{ matrix.installer }}"
 
   macos:
     # The type of runner that the job will run on
@@ -62,4 +62,4 @@ jobs:
       - run: pyenv install "${{ matrix.python }}"
         if: matrix.installer == 'pyenv'
 
-      - run: ./runtest.sh "${{ matrix.installer }}"
+      - run: ./runtest.sh test/test_functions.sh --filter "${{ matrix.installer }}"
