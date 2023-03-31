@@ -74,7 +74,7 @@ logs:
 #### poetry
 
 ```bash
-$ poetry shell
+$ poetry install
 The currently activated Python version 3.11.2 is not supported by the project (3.9.14).
 Trying to find and use a compatible version.
 
