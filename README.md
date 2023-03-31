@@ -1,4 +1,4 @@
-**the dead simple Python virtualenv manager** *for the stoic programmer 🪚*
+**the d̲ead simple P̲ython v̲irtualenv manager** *for the stoic programmer 🪚*  
 
 [![CI](https://github.com/caioariede/dpv/actions/workflows/ci.yml/badge.svg)](https://github.com/caioariede/dpv/actions/workflows/ci.yml)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/caioariede/dpv)
@@ -37,7 +37,19 @@ aliases:
   dpv versions --all / -a
 ```
 
-## Comparison
+## Command Comparison
+
+| command                                     | dpv          | poetry                   |
+| --                                          | --           | --                       |
+| initialize virtualenv                       | dpv          | poetry install           |
+| initialize virtualenv with specific version | dpv 3.9.16   | poetry env use 3.9.16    |
+| initialize temporary virtualenv             | dpv --temp   |                          |
+| open shell                                  | dpv          | poetry shell             |
+| remove virtualenv                           | dpv drop     | poetry env remove 3.9.16 |
+| quit shell                                  | `ctrl-d`     | `ctrl-d`                 |
+| list python versions (available, installed) | dpv versions |                          |
+
+## Behavior Comparison
 
 ### Initialize virtualenv
 
@@ -47,6 +59,8 @@ aliases:
 * homebrew & pyenv are both installed
 
 #### dpv
+
+dpv will install the required version
 
 ```bash
 $ dpv
@@ -71,6 +85,26 @@ logs:
   - created new virtualenv: myproject-3.9.14
 ```
 
+You can still choose an alrready installed version:
+
+```bash
+$ dpv versions --installed
+installed python versions
+-------------------------
+
+pyenv: 3.11-dev* 3.10-dev* 3.9.14* 3.9.13* 3.9.12* 3.9.2* 3.6.15* 2.7.18*
+homebrew: 3.11.2* 3.10.10* 3.9.16* 3.8.16* 3.7.16*
+
+$ dpv 3.9.16
+python version [selected: 3.9.16 source: command-line]:
+dpv - ds-packages-3.9.16 activated
+
+logs:
+  - homebrew method selected
+  - homebrew: version 3.9.16 already installed
+  - created new virtualenv: ds-packages-3.9.16
+```
+
 #### poetry
 
 ```bash
@@ -80,8 +114,4 @@ Trying to find and use a compatible version.
 
 Poetry was unable to find a compatible version. If you have one, you can explicitly use it via the "env use" command.
 ```
-
-
-
-
 
