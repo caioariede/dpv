@@ -63,12 +63,12 @@ installing python 3.9.14 using pyenv
   > Installed Python-3.9.14 to /Users/caio/.pyenv/versions/3.9.14
   >
 done
-dpv - ds-packages-3.9.14 activated
+dpv - myproject-3.9.14 activated
 
 logs:
   - pyenv method selected
   - pyenv: version 3.9.14 needs to be installed
-  - created new virtualenv: ds-packages-3.9.14
+  - created new virtualenv: myproject-3.9.14
 ```
 
 #### poetry
