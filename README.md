@@ -37,6 +37,12 @@ aliases:
   dpv versions --all / -a
 ```
 
+## Installation
+
+```bash
+bash -c 'curl -fsSLo $1 https://raw.githubusercontent.com/caioariede/dpv/HEAD/src/dpv && chmod +x $1' -- /usr/local/bin/dpv
+```
+
 ## Command Comparison
 
 | command                                     | dpv          | poetry                   |
