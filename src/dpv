@@ -179,14 +179,10 @@ cmd_drop() {
 unsafe_cmd_internal_instrument() {
 	#
 	# Unsafe:
-	# - unsafe_init_config_vars:
-	#   - ERR_INSTALL_METHOD_NOT_SELECTED
 	# - unsafe_cmd_internal_instrument:
 	#   - ERR_CANNOT_ACTIVATE_VIRTUALENV
 	#
 	dpv_check_is_set "$DPV_VENV_DIR" || return
-
-	unsafe_init_config_vars
 
 	echo "source $DPV_VENV_DIR/bin/activate || exit $ERR_CANNOT_ACTIVATE_VIRTUALENV"
 }
@@ -281,24 +277,6 @@ unsafe_cmd_run() {
 # Initialization functions
 #
 
-unsafe_init_config_vars() {
-	#
-	# Initialize CFG_* variables
-	#
-	# Unsafe:
-	# - unsafe_init_config_vars:
-	#   - ERR_INSTALL_METHOD_NOT_SELECTED
-	#
-	if [ "${ARG_USE_PYENV:-} ${ARG_USE_HOMEBREW:-}" == "1 1" ]; then
-		echo "you should specify either --pyenv or --homebrew, not both"
-		exit $ERR_INSTALL_METHOD_NOT_SELECTED
-	elif [ "${ARG_USE_PYENV:-}" == "1" ]; then
-		CFG_PREFERRED_INSTALL_METHODS="pyenv"
-	elif [ "${ARG_USE_HOMEBREW:-}" == "1" ]; then
-		CFG_PREFERRED_INSTALL_METHODS="homebrew"
-	fi
-}
-
 unsafe_init_virtualenv_vars() {
 	#
 	# Tries to find an existing virtualenv matching the following:
@@ -362,13 +340,9 @@ unsafe_init_virtualenv_vars() {
 	fi
 
 	# virtualenv was not located
-	unsafe_load_scan_python_version
+	unsafe_dpv_internal_scan_python_version
 	read -rp "python version [selected: $INTERNAL_SCAN_PYTHON_VERSION source: $INTERNAL_SCAN_PYTHON_VERSION_SOURCE]: " INTERNAL_VENV_PYTHON_VERSION
 	INTERNAL_VENV_PYTHON_VERSION=${INTERNAL_VENV_PYTHON_VERSION:-$INTERNAL_SCAN_PYTHON_VERSION}
-
-	if [ "$INTERNAL_VENV_PYTHON_VERSION" == "" ]; then
-		exit "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
-	fi
 
 	unsafe_dpv_internal_set_available_install_methods
 
@@ -444,37 +418,20 @@ unsafe_init_virtualenv_vars() {
 	dpv_internal_log "created new virtualenv: $(basename "$INTERNAL_VENV_DIR")"
 }
 
-init_python_vars() {
+unsafe_dpv_internal_scan_python_version() {
 	#
-	# Loads:
-	# - PY_EXECUTABLE: Path to the Python executable
-	#
-	return
-
-	local python_version="$INTERNAL_VENV_PYTHON_VERSION"
-	local install="$INTERNAL_VENV_INSTALL_METHOD"
-
-	versions_var=$(tr '[:lower:]' '[:upper:]' <<<"INTERNAL_${install}_INSTALLED_PYTHON_VERSIONS")
-	installed_versions=${!versions_var}
-
-	if [[ "$installed_versions" != *"$python_version"* ]]; then
-		echo "installing python $python_version using ${install}"
-		${install}_install "$python_version" | sed 's/^/  > /'
-		echo "ok"
-	fi
-
-	PY_EXECUTABLE=$(${install}_get_python_executable "$python_version")
-}
-
-unsafe_load_scan_python_version() {
+	# Tries to find the required Python version for a project in the following order:
+	# 1. Check if a Python version was passed by argument
+	# 2. Check if there is a runtime.txt file
+	# 3. Check if there is a pyproject.toml file with a Python version
+	# 4. Check if there is a Python version already installed with one of the install methods
+	# 5. Check if there is a Python version available with one of the install methods
 	#
 	# Unsafe:
 	# - unsafe_dpv_internal_set_available_install_methods
 	#   - ERR_NO_AVAILABLE_INSTALL_METHODS
 	#
-	if dpv_check_is_set "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"; then
-		return
-	fi
+	dpv_check_is_set "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE" && return
 
 	# use version provided by the user, if provided
 	if dpv_check_is_set "$INTERNAL_ARG_PYTHON_VERSION"; then
@@ -498,7 +455,8 @@ unsafe_load_scan_python_version() {
 			if [[ "$line" =~ ^python\ *=\ *[\'\"][^0-9]*(.*)[\'\"] ]]; then
 				INTERNAL_SCAN_PYTHON_VERSION_SOURCE="pyproject.toml"
 				INTERNAL_SCAN_PYTHON_VERSION="${BASH_REMATCH[1]}"
-				break
+
+				return
 			fi
 		done <"pyproject.toml"
 
@@ -512,11 +470,13 @@ unsafe_load_scan_python_version() {
 		for install in $line; do
 			${install}_load_installed_python_versions
 			versions_var=$(tr '[:lower:]' '[:upper:]' <<<"INTERNAL_${install}_INSTALLED_PYTHON_VERSIONS")
-			while read -r version; do
-				INTERNAL_SCAN_PYTHON_VERSION=$version
-				INTERNAL_SCAN_PYTHON_VERSION_SOURCE="already installed with $install"
-				break 2
-			done <<<"${!versions_var}"
+			if ! dpv_check_string_is_empty "${!versions_var}"; then
+				while read -r version; do
+					INTERNAL_SCAN_PYTHON_VERSION=$version
+					INTERNAL_SCAN_PYTHON_VERSION_SOURCE="already installed with $install"
+					return
+				done <<<"${!versions_var}"
+			fi
 		done
 	done <<<"$INTERNAL_AVAILABLE_INSTALL_METHODS"
 
@@ -526,14 +486,18 @@ unsafe_load_scan_python_version() {
 			for install in $line; do
 				${install}_load_available_python_versions
 				versions_var=$(tr '[:lower:]' '[:upper:]' <<<"INTERNAL_${install}_AVAILABLE_PYTHON_VERSIONS")
-				while read -r version; do
-					INTERNAL_SCAN_PYTHON_VERSION=$version
-					INTERNAL_SCAN_PYTHON_VERSION_SOURCE="can be installed with $install"
-					break 2
-				done <<<"${!versions_var}"
+				if ! dpv_check_string_is_empty "${!versions_var}"; then
+					while read -r version; do
+						INTERNAL_SCAN_PYTHON_VERSION=$version
+						INTERNAL_SCAN_PYTHON_VERSION_SOURCE="can be installed with $install"
+						return
+					done <<<"${!versions_var}"
+				fi
 			done
 		done <<<"$INTERNAL_AVAILABLE_INSTALL_METHODS"
 	fi
+
+	exit "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 }
 
 #
@@ -545,7 +509,6 @@ main() {
 	# Unsafe:
 	# - main:
 	#   - ERR_MAIN_INVALID_ARGUMENT
-	# - unsafe_init_config_vars:
 	#   - ERR_INSTALL_METHOD_NOT_SELECTED
 	# - unsafe_cmd_internal_instrument:
 	#   - ERR_INSTALL_METHOD_NOT_SELECTED
@@ -598,7 +561,14 @@ main() {
 	CMD_ARGS=${CMD_ARGS:1} # drop leading space
 
 	# must happen after ARG_ variables are parsed
-	unsafe_init_config_vars
+	if [ "${ARG_USE_PYENV:-} ${ARG_USE_HOMEBREW:-}" == "1 1" ]; then
+		echo "you should specify either --pyenv or --homebrew, not both"
+		exit $ERR_INSTALL_METHOD_NOT_SELECTED
+	elif [ "${ARG_USE_PYENV:-}" == "1" ]; then
+		CFG_PREFERRED_INSTALL_METHODS="pyenv"
+	elif [ "${ARG_USE_HOMEBREW:-}" == "1" ]; then
+		CFG_PREFERRED_INSTALL_METHODS="homebrew"
+	fi
 
 	dpv_internal_set_log_file
 
@@ -712,7 +682,7 @@ unsafe_print_info() {
 	#
 	echo "dpv - $(basename "$DPV_VENV_DIR") activated"
 
-	unsafe_load_scan_python_version
+	unsafe_dpv_internal_scan_python_version
 	dpv_internal_print_logs | dpv_format_theme
 }
 

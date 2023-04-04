@@ -12,8 +12,41 @@ setup() {
 	. "$DIR/helper.sh"
 	. dpv
 
-	INTERNAL_LOG_FILE=$(mktemp "${TMPDIR:-/tmp/}dpv_test_logs.XXXXX")
+	mock_log_file "$(mktemp "${TMPDIR:-/tmp/}dpv_test_logs.XXXXX")"
 }
+
+#
+# mocks
+#
+mock_log_file() {
+	INTERNAL_LOG_FILE="$1"
+}
+
+mock_venv_python_version() {
+	INTERNAL_VENV_PYTHON_VERSION="$1"
+}
+
+mock_available_install_methods() {
+	INTERNAL_AVAILABLE_INSTALL_METHODS="$@"
+}
+
+mock_installed_python_versions() {
+	local install="$(echo "$1" | tr '[:lower:]' '[:upper:'])"
+	local var="INTERNAL_${install}_INSTALLED_PYTHON_VERSIONS"
+	shift
+	eval "$var='$@'"
+}
+
+mock_available_python_versions() {
+	local install="$(echo "$1" | tr '[:lower:]' '[:upper:'])"
+	local var="INTERNAL_${install}_AVAILABLE_PYTHON_VERSIONS"
+	shift
+	eval "$var='$@'"
+}
+
+#
+# custom asserts
+#
 
 assert_log_output() {
 	run cat $INTERNAL_LOG_FILE
@@ -134,7 +167,7 @@ test_dpv_format_highlight_versions() { # @test
 
 test_dpv_internal_mktemp_venv_dir() { # @test
 	test_fn() {
-		INTERNAL_VENV_PYTHON_VERSION="99.9"
+		mock_venv_python_version "99.9"
 		echo $(dpv_internal_mktemp_venv_dir)
 	}
 	run test_fn
@@ -167,7 +200,7 @@ test_pyenv_resolve_python_version_not_available() { # @test
 	}
 	run test_fn
 	assert_success
-    assert_output ""
+	assert_output ""
 }
 
 test_pyenv_load_available_python_versions() { # @test
@@ -329,7 +362,7 @@ test_homebrew_expand_python_version_not_available() { # @test
 #
 test_dpv_internal_set_log_file() { # @test
 	test_fn() {
-		INTERNAL_LOG_FILE="ø"
+		mock_log_file "ø"
 		dpv_internal_set_log_file
 		echo "$INTERNAL_LOG_FILE"
 	}
@@ -387,4 +420,121 @@ test_dpv_internal_print_logs_with_logs() { # @test
 	}
 	run test_fn
 	assert_output --partial "- yes logs"
+}
+
+test_unsafe_dpv_internal_scan_python_version_success_runtime_txt() { # @test
+	test_fn() {
+		echo "python-3.9.1" >>runtime.txt
+		unsafe_dpv_internal_scan_python_version
+		echo "$INTERNAL_SCAN_PYTHON_VERSION"
+		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+	}
+	run test_fn
+	assert_success
+	assert_line --index 0 "3.9.1"
+	assert_line --index 1 "runtime.txt"
+}
+
+test_unsafe_dpv_internal_scan_python_version_success_pyproject_toml_single_quote() { # @test
+	test_fn() {
+		echo "python = '3.9.1'" >>pyproject.toml
+		unsafe_dpv_internal_scan_python_version
+		echo "$INTERNAL_SCAN_PYTHON_VERSION"
+		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+	}
+	run test_fn
+	assert_success
+	assert_line --index 0 "3.9.1"
+	assert_line --index 1 "pyproject.toml"
+}
+
+test_unsafe_dpv_internal_scan_python_version_success_pyproject_toml_double_quote() { # @test
+	test_fn() {
+		echo 'python = "3.9.1"' >>pyproject.toml
+		unsafe_dpv_internal_scan_python_version
+		echo "$INTERNAL_SCAN_PYTHON_VERSION"
+		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+	}
+	run test_fn
+	assert_success
+	assert_line --index 0 "3.9.1"
+	assert_line --index 1 "pyproject.toml"
+}
+
+test_unsafe_dpv_internal_scan_python_version_success_any_installed_version_pyenv() { # @test
+	test_fn() {
+		mock_available_install_methods "pyenv"
+		mock_installed_python_versions "pyenv" "3.9.2"
+
+		unsafe_dpv_internal_scan_python_version
+		echo "$INTERNAL_SCAN_PYTHON_VERSION"
+		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+	}
+	run test_fn
+	assert_success
+	assert_line --index 0 "3.9.2"
+	assert_line --index 1 --partial "pyenv"
+}
+
+test_unsafe_dpv_internal_scan_python_version_success_any_installed_version_homebrew() { # @test
+	test_fn() {
+		mock_available_install_methods "homebrew"
+		mock_installed_python_versions "homebrew" "3.9.3"
+
+		unsafe_dpv_internal_scan_python_version
+		echo "$INTERNAL_SCAN_PYTHON_VERSION"
+		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+	}
+	run test_fn
+	assert_success
+	assert_line --index 0 "3.9.3"
+	assert_line --index 1 --partial "homebrew"
+}
+
+test_unsafe_dpv_internal_scan_python_version_success_any_available_version_pyenv() { # @test
+	test_fn() {
+		mock_available_install_methods "pyenv"
+		mock_installed_python_versions "pyenv" ""
+		mock_available_python_versions "pyenv" "3.9.2"
+
+		unsafe_dpv_internal_scan_python_version
+		echo "$INTERNAL_SCAN_PYTHON_VERSION"
+		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+	}
+	run test_fn
+	assert_success
+	assert_line --index 0 "3.9.2"
+	assert_line --index 1 --partial "pyenv"
+}
+
+test_unsafe_dpv_internal_scan_python_version_success_any_available_version_homebrew() { # @test
+	test_fn() {
+		mock_available_install_methods "homebrew"
+		mock_installed_python_versions "homebrew" ""
+		mock_available_python_versions "homebrew" "3.9.3"
+
+		unsafe_dpv_internal_scan_python_version
+		echo "$INTERNAL_SCAN_PYTHON_VERSION"
+		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+	}
+	run test_fn
+	assert_success
+	assert_line --index 0 "3.9.3"
+	assert_line --index 1 --partial "homebrew"
+}
+
+test_unsafe_dpv_internal_scan_python_version_failure_no_available_python_versions() { # @test
+	test_fn() {
+		mock_available_install_methods "pyenv homebrew"
+		mock_installed_python_versions "homebrew" ""
+		mock_available_python_versions "homebrew" ""
+		mock_installed_python_versions "pyenv" ""
+		mock_available_python_versions "pyenv" ""
+
+		unsafe_dpv_internal_scan_python_version
+		echo "$INTERNAL_SCAN_PYTHON_VERSION"
+		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+	}
+	run test_fn
+    assert_failure "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 }
