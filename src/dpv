@@ -67,6 +67,7 @@ INTERNAL_SCAN_PYTHON_VERSION_SOURCE="ø"
 INTERNAL_ARG_PYTHON_VERSION="ø"
 INTERNAL_VENV_INSTALL_METHOD="ø"
 INTERNAL_VENV_PYTHON_VERSION="ø"
+INTERNAL_VENV_DIR="ø"
 
 #
 # Command functions
@@ -301,43 +302,7 @@ unsafe_init_virtualenv_vars() {
 	# - unsafe_dpv_internal_set_available_install_methods:
 	#   - ERR_NO_AVAILABLE_INSTALL_METHODS
 	#
-	mkdir -p "$CFG_VENVS_DIR"
-
-	# try to locate existing virtualenv
-	while IFS= read -r file; do
-		local path
-		local version
-		local install_method
-		while IFS= read -r line; do
-			if [[ "$line" =~ ^path\ *=\ *(.*) ]]; then
-				path="${BASH_REMATCH[1]}"
-			elif [[ "$line" =~ ^version\ *=\ *(.*) ]]; then
-				version="${BASH_REMATCH[1]}"
-			elif [[ "$line" =~ ^install_method\ *=\ *(.*) ]]; then
-				install_method="${BASH_REMATCH[1]}"
-			fi
-		done <"$file"
-		if [[ "$path" == "$PWD" ]]; then
-			if ! dpv_check_is_set "$INTERNAL_ARG_PYTHON_VERSION" || [[ "$version" == "$INTERNAL_ARG_PYTHON_VERSION"* ]]; then
-				if ! dpv_check_is_set "$INTERNAL_VENV_PYTHON_VERSION"; then
-					dpv_internal_log "found virtualenv: $(basename "$(dirname "$file")") (selected first match)"
-					INTERNAL_VENV_PYTHON_VERSION=$version
-					INTERNAL_VENV_INSTALL_METHOD=$install_method
-					if [ "${ARG_TEMP:-}" == "1" ]; then
-						INTERNAL_VENV_DIR=$(dpv_internal_mktemp_venv_dir)
-					else
-						INTERNAL_VENV_DIR=$(dirname "$file")
-					fi
-				else
-					dpv_internal_log "found virtualenv: $(basename "$(dirname "$file")") (skipped)"
-				fi
-			fi
-		fi
-	done < <(find "$CFG_VENVS_DIR" -name dpv.cfg -type f -mindepth 3 -maxdepth 3)
-
-	if dpv_check_is_set "$INTERNAL_VENV_PYTHON_VERSION"; then
-		return
-	fi
+	dpv_internal_scan_virtualenv && return
 
 	# virtualenv was not located
 	unsafe_dpv_internal_scan_python_version
@@ -416,6 +381,64 @@ unsafe_init_virtualenv_vars() {
 	"$INTERNAL_VENV_PY_EXECUTABLE" -m venv "$INTERNAL_VENV_DIR"
 	echo -e "path = $PWD\nversion = $INTERNAL_VENV_PYTHON_VERSION\ninstall_method = $INTERNAL_VENV_INSTALL_METHOD" >"$INTERNAL_VENV_DIR/dpv.cfg"
 	dpv_internal_log "created new virtualenv: $(basename "$INTERNAL_VENV_DIR")"
+}
+
+dpv_internal_scan_virtualenv() {
+	#
+	# Tries to find an existing virtualenv for the project
+	# The virtualenvs directory has the following tree layout:
+	#
+	# + root (stored in variable: CFG_VENVS_DIR)
+	#  \
+	#   - venv-dir-1
+	#   - venv-dir-2
+	#   + venv-dir-3
+	#    \
+	#     + dpv.cfg
+	#      \
+	#       |------ file format ------|
+	#       |-------------------------|
+	#       | path = /path/to/project |
+	#       | version = 3.9.2         | --> this is the Python version
+	#       | install_method = pyenv  |
+	#       |-------------------------|
+	#
+	mkdir -p "$CFG_VENVS_DIR"
+
+	# try to locate existing virtualenv
+	while IFS= read -r file; do
+		local path
+		local version
+		local install_method
+		while IFS= read -r line; do
+			if [[ "$line" =~ ^path\ *=\ *(.*) ]]; then
+				path="${BASH_REMATCH[1]}"
+			elif [[ "$line" =~ ^version\ *=\ *(.*) ]]; then
+				version="${BASH_REMATCH[1]}"
+			elif [[ "$line" =~ ^install_method\ *=\ *(.*) ]]; then
+				install_method="${BASH_REMATCH[1]}"
+			fi
+		done <"$file"
+		if [[ "$path" == "$PWD" ]]; then
+			if ! dpv_check_is_set "$INTERNAL_ARG_PYTHON_VERSION" || [[ "$version" == "$INTERNAL_ARG_PYTHON_VERSION"* ]]; then
+				if ! dpv_check_is_set "$INTERNAL_VENV_PYTHON_VERSION"; then
+					dpv_internal_log "found virtualenv: $(basename "$(dirname "$file")") (selected first match)"
+					INTERNAL_VENV_PYTHON_VERSION=$version
+					INTERNAL_VENV_INSTALL_METHOD=$install_method
+					if [ "${ARG_TEMP:-}" == "1" ]; then
+						INTERNAL_VENV_DIR=$(dpv_internal_mktemp_venv_dir)
+					else
+						INTERNAL_VENV_DIR=$(dirname "$file")
+					fi
+				else
+					dpv_internal_log "found virtualenv: $(basename "$(dirname "$file")") (skipped)"
+				fi
+			fi
+		fi
+	done < <(find "$CFG_VENVS_DIR" -name dpv.cfg -type f -mindepth 3 -maxdepth 3)
+
+	# return 1 if venv is not set
+	dpv_check_is_set "$INTERNAL_VENV_DIR"
 }
 
 unsafe_dpv_internal_scan_python_version() {

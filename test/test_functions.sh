@@ -44,6 +44,25 @@ mock_available_python_versions() {
 	eval "$var='$@'"
 }
 
+mock_venvs_dir() {
+	CFG_VENVS_DIR="$(pwd)/virtualenvs"
+}
+
+mock_venv() {
+	local venv_install_method="$1"
+	shift
+	local venv_python_version="$1"
+	shift
+	local project_path="$1"
+	shift
+	local venv_name="$(basename "$project_path")"
+
+	local venv_path="$CFG_VENVS_DIR/$venv_python_version/$venv_name"
+
+	mkdir -p "$CFG_VENVS_DIR/$venv_python_version/$venv_name"
+	printf "path = $project_path\nversion = $venv_python_version\ninstall_method = $venv_install_method\n" >"$venv_path/dpv.cfg"
+}
+
 #
 # custom asserts
 #
@@ -422,6 +441,40 @@ test_dpv_internal_print_logs_with_logs() { # @test
 	assert_output --partial "- yes logs"
 }
 
+test_dpv_internal_scan_virtualenv_match() { # @test
+	mock_venvs_dir
+
+	test_fn() {
+		local project_path="$(pwd)/venv-1"
+		mock_venv "pyenv" "3.9.9" "$project_path"
+
+		PWD="$project_path" dpv_internal_scan_virtualenv
+
+		echo "$INTERNAL_VENV_PYTHON_VERSION"
+		echo "$INTERNAL_VENV_INSTALL_METHOD"
+		echo "$INTERNAL_VENV_DIR"
+	}
+
+	run test_fn
+	assert_success
+	assert_line --index 0 "3.9.9"
+	assert_line --index 1 "pyenv"
+	assert_line --index 2 "$CFG_VENVS_DIR/3.9.9/venv-1"
+}
+
+test_dpv_internal_scan_virtualenv_not_match() { # @test
+	mock_venvs_dir
+
+	test_fn() {
+		local project_path="$(pwd)/venv-1"
+		mock_venv "pyenv" "3.9.9" "$project_path"
+
+		PWD="$(pwd)/venv-2" dpv_internal_scan_virtualenv
+	}
+
+	refute test_fn
+}
+
 test_unsafe_dpv_internal_scan_python_version_success_runtime_txt() { # @test
 	test_fn() {
 		echo "python-3.9.1" >>runtime.txt
@@ -536,5 +589,5 @@ test_unsafe_dpv_internal_scan_python_version_failure_no_available_python_version
 		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
 	}
 	run test_fn
-    assert_failure "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
+	assert_failure "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 }
