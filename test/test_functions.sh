@@ -591,3 +591,52 @@ test_unsafe_dpv_internal_scan_python_version_failure_no_available_python_version
 	run test_fn
 	assert_failure "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
 }
+
+test_unsafe_dpv_internal_resolve_python_version_match_installed() { # @test
+	test_fn() {
+		mock_available_install_methods "pyenv"
+		mock_installed_python_versions "pyenv" "3.9.4"
+
+		unsafe_dpv_internal_resolve_python_version "3.9"
+		echo "$INTERNAL_RESOLVE_PYTHON_VERSION"
+		echo "$INTERNAL_RESOLVE_INSTALL_METHOD"
+	}
+
+	run test_fn
+	assert_success
+	assert_line --index 0 "3.9.4"
+	assert_line --index 1 "pyenv"
+}
+
+test_unsafe_dpv_internal_resolve_python_version_match_available() { # @test
+	test_fn() {
+		mock_available_install_methods "pyenv"
+        mock_installed_python_versions "pyenv" ""
+		mock_available_python_versions "pyenv" "3.9.4"
+
+		unsafe_dpv_internal_resolve_python_version "3.9"
+		echo "$INTERNAL_RESOLVE_PYTHON_VERSION"
+		echo "$INTERNAL_RESOLVE_INSTALL_METHOD"
+	}
+
+	run test_fn
+	assert_success
+	assert_line --index 0 "3.9.4"
+	assert_line --index 1 "pyenv"
+    assert_log_output --partial "needs to be installed"
+}
+
+test_unsafe_dpv_internal_resolve_python_version_not_match() { # @test
+	test_fn() {
+		mock_available_install_methods "pyenv"
+        mock_installed_python_versions "pyenv" ""
+		mock_available_python_versions "pyenv" "3.8.1"
+
+		unsafe_dpv_internal_resolve_python_version "3.9"
+		echo "$INTERNAL_RESOLVE_PYTHON_VERSION"
+		echo "$INTERNAL_RESOLVE_INSTALL_METHOD"
+	}
+
+	run test_fn
+	assert_failure "$ERR_CANNOT_RESOLVE_PYTHON_VERSION"
+}
