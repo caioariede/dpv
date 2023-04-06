@@ -43,14 +43,16 @@ ERR_RUN_INVALID_ARGUMENT=134
 ERR_CANNOT_DETERMINE_PYTHON_VERSION=135
 ERR_NO_AVAILABLE_INSTALL_METHODS=136
 ERR_CANNOT_RESOLVE_PYTHON_VERSION=137
-ERR_VENV_INSTALL_METHOD_NOT_AVAILABLE=138
+ERR_VIRTUALENV_INSTALL_METHOD_NOT_AVAILABLE=138
 ERR_INSTALLATION_FAILED=139
+ERR_CANNOT_CREATE_VIRTUALENV=140
+ERR_VIRTUALENV_CANNOT_FIND_PYTHON_EXECUTABLE=141
 
 # VARS: Configuration
 CFG_VERSION="0.9.2"
 CFG_THEME="${DPV_THEME:-cat}"
 CFG_DIR="${DPV_DIR:-$HOME/.dpv}"
-CFG_VENVS_DIR="$CFG_DIR/virtualenvs"
+CFG_VIRTUALENVS_DIR="$CFG_DIR/virtualenvs"
 CFG_PYENV_EXECUTABLE="${PYENV_EXECUTABLE:-pyenv}"
 CFG_HOMEBREW_EXECUTABLE="${HOMEBREW_EXECUTABLE:-brew}"
 CFG_PREFERRED_INSTALL_METHODS="pyenv homebrew"
@@ -67,9 +69,9 @@ INTERNAL_SCAN_PYTHON_VERSION_SOURCE="ø"
 INTERNAL_RESOLVE_PYTHON_VERSION="ø"
 INTERNAL_RESOLVE_INSTALL_METHOD="ø"
 INTERNAL_ARG_PYTHON_VERSION="ø"
-INTERNAL_VENV_INSTALL_METHOD="ø"
-INTERNAL_VENV_PYTHON_VERSION="ø"
-INTERNAL_VENV_DIR="ø"
+INTERNAL_VIRTUALENV_INSTALL_METHOD="ø"
+INTERNAL_VIRTUALENV_PYTHON_VERSION="ø"
+INTERNAL_VIRTUALENV_DIR="ø"
 
 #
 # Command functions
@@ -109,7 +111,7 @@ cmd_help() {
 	echo "  dpv versions --all / -a"
 	echo
 	echo "config:"
-	echo "  CFG_VENVS_DIR=$CFG_VENVS_DIR"
+	echo "  CFG_VIRTUALENVS_DIR=$CFG_VIRTUALENVS_DIR"
 	echo "  CFG_THEME=$CFG_THEME"
 	echo "  CFG_DIR=$CFG_DIR"
 	echo "  CFG_PYENV_EXECUTABLE=$CFG_PYENV_EXECUTABLE"
@@ -170,8 +172,8 @@ cmd_drop() {
 	echo "command: drop virtualenv"
 	echo
 
-	if dpv_check_is_set "$DPV_VENV_DIR"; then
-		rm -rf "$DPV_VENV_DIR"
+	if dpv_check_is_set "$DPV_VIRTUALENV_DIR"; then
+		rm -rf "$DPV_VIRTUALENV_DIR"
 		echo "dropped"
 	else
 		echo "error: virtualenv not activated"
@@ -185,16 +187,16 @@ unsafe_cmd_internal_instrument() {
 	# - unsafe_cmd_internal_instrument:
 	#   - ERR_CANNOT_ACTIVATE_VIRTUALENV
 	#
-	dpv_check_is_set "$DPV_VENV_DIR" || return
+	dpv_check_is_set "$DPV_VIRTUALENV_DIR" || return
 
-	echo "source $DPV_VENV_DIR/bin/activate || exit $ERR_CANNOT_ACTIVATE_VIRTUALENV"
+	echo "source $DPV_VIRTUALENV_DIR/bin/activate || exit $ERR_CANNOT_ACTIVATE_VIRTUALENV"
 }
 
 cmd_list() {
 	echo "command: list of virtualenvs"
 	echo
 
-	find "$CFG_VENVS_DIR" -maxdepth 2 -mindepth 2 | sort
+	find "$CFG_VIRTUALENVS_DIR" -maxdepth 2 -mindepth 2 | sort
 }
 
 cmd_info() {
@@ -213,7 +215,7 @@ unsafe_wrap_cmd_run() {
 	#   - ERR_CANNOT_RESOLVE_PYTHON_VERSION
 	#   - ERR_INSTALL_METHOD_NOT_SELECTED
 	#
-	if dpv_check_is_set "$DPV_VENV_DIR"; then
+	if dpv_check_is_set "$DPV_VIRTUALENV_DIR"; then
 		cmd_info | dpv_format_theme
 	else
 		unsafe_cmd_run $*
@@ -225,7 +227,7 @@ unsafe_cmd_run() {
 	# Unsafe:
 	# - unsafe_cmd_run:
 	#   - ERR_RUN_INVALID_ARGUMENT
-	# - unsafe_init_virtualenv_vars:
+	# - unsafe_dpv_internal_initialize_virtualenv:
 	#   - ERR_CANNOT_DETERMINE_PYTHON_VERSION
 	#   - ERR_NO_AVAILABLE_INSTALL_METHODS
 	#   - ERR_CANNOT_RESOLVE_PYTHON_VERSION
@@ -265,14 +267,14 @@ unsafe_cmd_run() {
 
 	CMD=${CMD:1}
 
-	unsafe_init_virtualenv_vars
+	unsafe_dpv_internal_initialize_virtualenv
 
 	trap - EXIT
 	if [ "$CMD" == "" ]; then
-		DPV_VENV_DIR=$INTERNAL_VENV_DIR unsafe_print_info
-		DPV_VENV_DIR=$INTERNAL_VENV_DIR "$SHELL"
+		DPV_VIRTUALENV_DIR=$INTERNAL_VIRTUALENV_DIR unsafe_print_info
+		DPV_VIRTUALENV_DIR=$INTERNAL_VIRTUALENV_DIR "$SHELL"
 	else
-		PATH=$INTERNAL_VENV_DIR/bin:$PATH $CMD
+		PATH=$INTERNAL_VIRTUALENV_DIR/bin:$PATH $CMD
 	fi
 }
 
@@ -280,7 +282,7 @@ unsafe_cmd_run() {
 # Initialization functions
 #
 
-unsafe_init_virtualenv_vars() {
+unsafe_dpv_internal_initialize_virtualenv() {
 	#
 	# Tries to find an existing virtualenv matching the following:
 	# 1. The directory path
@@ -293,12 +295,12 @@ unsafe_init_virtualenv_vars() {
 	# 3. Error out (ERR_CANNOT_RESOLVE_PYTHON_VERSION)
 	#
 	# Loads:
-	# - INTERNAL_VENV_PYTHON_VERSION: The version resolved for the virtualenv
-	# - INTERNAL_VENV_INSTALL_METHOD: The installaton method resolved for the virtualenv
-	# - INTERNAL_VENV_DIR: The directory path for the virtualenv
+	# - INTERNAL_VIRTUALENV_PYTHON_VERSION: The version resolved for the virtualenv
+	# - INTERNAL_VIRTUALENV_INSTALL_METHOD: The installaton method resolved for the virtualenv
+	# - INTERNAL_VIRTUALENV_DIR: The directory path for the virtualenv
 	#
 	# Unsafe:
-	# - unsafe_init_virtualenv_vars:
+	# - unsafe_dpv_internal_initialize_virtualenv:
 	#   - ERR_CANNOT_DETERMINE_PYTHON_VERSION
 	#   - ERR_CANNOT_RESOLVE_PYTHON_VERSION
 	# - unsafe_dpv_internal_set_available_install_methods:
@@ -321,27 +323,50 @@ unsafe_init_virtualenv_vars() {
 	# Prompt user to confirm this is the Python version wanted
 	local python_version_user_input
 	read -rp "python version [default: $INTERNAL_SCAN_PYTHON_VERSION source: $INTERNAL_SCAN_PYTHON_VERSION_SOURCE]: " python_version_user_input
-	INTERNAL_VENV_PYTHON_VERSION="${python_version_user_input:-$INTERNAL_SCAN_PYTHON_VERSION}"
+	INTERNAL_VIRTUALENV_PYTHON_VERSION="${python_version_user_input:-$INTERNAL_SCAN_PYTHON_VERSION}"
 
 	# Resolve Python version
 	# If not possible, this will error out with: ERR_CANNOT_RESOLVE_PYTHON_VERSION
-	unsafe_dpv_internal_resolve_python_version "$INTERNAL_VENV_PYTHON_VERSION"
+	unsafe_dpv_internal_resolve_python_version "$INTERNAL_VIRTUALENV_PYTHON_VERSION"
 
+	# Install Python version
+	# If version is already installed, install will be skipped
+	# If not possible, this will error out with: ERR_INSTALLATION_FAILED
+	unsafe_${INTERNAL_VIRTUALENV_INSTALL_METHOD}_install <<<"$INTERNAL_VIRTUALENV_PYTHON_VERSION"
+
+	# Create virtualenv
+	# If not possible, this will error out with: ERR_CANNOT_CREATE_VIRTUALENV
+	unsafe_dpv_internal_create_virtualenv
+}
+
+unsafe_dpv_internal_create_virtualenv() {
+	#
+	# Create a new virtualenv
+	#
+	# Unsafe:
+	# - ERR_CANNOT_CREATE_VIRTUALENV
+	# - ERR_VIRTUALENV_CANNOT_FIND_PYTHON_EXECUTABLE
+	#
 	if [ "${ARG_TEMP:-}" == "1" ]; then
-		INTERNAL_VENV_DIR=$(dpv_internal_mkdir_venv_temporary)
+		INTERNAL_VIRTUALENV_DIR=$(dpv_internal_mkdir_virtualenv_temporary)
 	else
-		INTERNAL_VENV_DIR=$(dpv_internal_mkdir_venv)
+		INTERNAL_VIRTUALENV_DIR=$(dpv_internal_mkdir_virtualenv)
 	fi
 
-	# install Python version
-	unsafe_${INTERNAL_VENV_INSTALL_METHOD}_install <<<"$INTERNAL_VENV_PYTHON_VERSION"
-
-	# create virtualenv
-	INTERNAL_VENV_PY_EXECUTABLE=$(${install}_get_python_executable "$INTERNAL_VENV_PYTHON_VERSION")
-
-	"$INTERNAL_VENV_PY_EXECUTABLE" -m venv "$INTERNAL_VENV_DIR"
-	echo -e "path = $PWD\nversion = $INTERNAL_VENV_PYTHON_VERSION\ninstall_method = $INTERNAL_VENV_INSTALL_METHOD" >"$INTERNAL_VENV_DIR/dpv.cfg"
-	dpv_internal_log "created new virtualenv: $(basename "$INTERNAL_VENV_DIR")"
+	echo "$INTERNAL_VIRTUALENV_INSTALL_METHOD: creating virtualenv..."
+	local error=0
+	(
+		unsafe_${INTERNAL_VIRTUALENV_INSTALL_METHOD}_get_python_executable -m venv "$INTERNAL_VIRTUALENV_DIR" 2>&1 | sed 's/^/  > /'
+	) || error=1
+	if [ $error -eq 0 ]; then
+		echo -e "path = $PWD\nversion = $INTERNAL_VIRTUALENV_PYTHON_VERSION\ninstall_method = $INTERNAL_VIRTUALENV_INSTALL_METHOD" >"$INTERNAL_VIRTUALENV_DIR/dpv.cfg"
+		dpv_internal_log "created new virtualenv: $(basename "$INTERNAL_VIRTUALENV_DIR")"
+		echo "$INTERNAL_VIRTUALENV_INSTALL_METHOD: done"
+	else
+		rm -rf "$INTERNAL_VIRTUALENV_DIR"
+		echo "$INTERNAL_VIRTUALENV_INSTALL_METHOD: error"
+		exit "$ERR_CANNOT_CREATE_VIRTUALENV"
+	fi
 }
 
 unsafe_dpv_internal_resolve_python_version() {
@@ -420,7 +445,7 @@ dpv_internal_scan_virtualenv() {
 	# Tries to find an existing virtualenv for the project
 	# The virtualenvs directory has the following tree layout:
 	#
-	# + root (stored in variable: CFG_VENVS_DIR)
+	# + root (stored in variable: CFG_VIRTUALENVS_DIR)
 	#  \
 	#   - venv-dir-1
 	#   - venv-dir-2
@@ -435,7 +460,7 @@ dpv_internal_scan_virtualenv() {
 	#       | install_method = pyenv  |
 	#       |-------------------------|
 	#
-	mkdir -p "$CFG_VENVS_DIR"
+	mkdir -p "$CFG_VIRTUALENVS_DIR"
 
 	# try to locate existing virtualenv
 	while IFS= read -r file; do
@@ -453,23 +478,23 @@ dpv_internal_scan_virtualenv() {
 		done <"$file"
 		if [[ "$path" == "$PWD" ]]; then
 			if ! dpv_check_is_set "$INTERNAL_ARG_PYTHON_VERSION" || [[ "$version" == "$INTERNAL_ARG_PYTHON_VERSION"* ]]; then
-				if ! dpv_check_is_set "$INTERNAL_VENV_PYTHON_VERSION"; then
+				if ! dpv_check_is_set "$INTERNAL_VIRTUALENV_PYTHON_VERSION"; then
 					dpv_internal_log "found virtualenv: $(basename "$(dirname "$file")") (selected first match)"
-					INTERNAL_VENV_PYTHON_VERSION=$version
-					INTERNAL_VENV_INSTALL_METHOD=$install_method
+					INTERNAL_VIRTUALENV_PYTHON_VERSION=$version
+					INTERNAL_VIRTUALENV_INSTALL_METHOD=$install_method
 					if [ "${ARG_TEMP:-}" == "1" ]; then
-						INTERNAL_VENV_DIR=$(dpv_internal_mkdir_venv_temporary)
+						INTERNAL_VIRTUALENV_DIR=$(dpv_internal_mkdir_virtualenv_temporary)
 					else
-						INTERNAL_VENV_DIR=$(dirname "$file")
+						INTERNAL_VIRTUALENV_DIR=$(dirname "$file")
 					fi
 				else
 					dpv_internal_log "found virtualenv: $(basename "$(dirname "$file")") (skipped)"
 				fi
 			fi
 		fi
-	done < <(find "$CFG_VENVS_DIR" -name dpv.cfg -type f -mindepth 3 -maxdepth 3)
+	done < <(find "$CFG_VIRTUALENVS_DIR" -name dpv.cfg -type f -mindepth 3 -maxdepth 3)
 
-	if ! dpv_check_is_set "$INTERNAL_VENV_DIR"; then
+	if ! dpv_check_is_set "$INTERNAL_VIRTUALENV_DIR"; then
 		return 1
 	fi
 }
@@ -579,7 +604,7 @@ main() {
 	#
 
 	# VARS: External/Overridable
-	DPV_VENV_DIR="${DPV_VENV_DIR:-ø}"
+	DPV_VIRTUALENV_DIR="${DPV_VIRTUALENV_DIR:-ø}"
 
 	CMD=""
 	CMD_ARGS=""
@@ -695,7 +720,7 @@ error_handling() {
 		;;
 
 	"$ERR_CANNOT_ACTIVATE_VIRTUALENV")
-		echo "dpv - failed to activate virtualenv $INTERNAL_VENV_DIR"
+		echo "dpv - failed to activate virtualenv $INTERNAL_VIRTUALENV_DIR"
 		;;
 
 	"$ERR_RUN_INVALID_ARGUMENT")
@@ -714,7 +739,7 @@ error_handling() {
 		echo "dpv - cannot resolve python version"
 		;;
 
-	"$ERR_VENV_INSTALL_METHOD_NOT_AVAILABLE")
+	"$ERR_VIRTUALENV_INSTALL_METHOD_NOT_AVAILABLE")
 		echo "dpv - installation method defined by the virtualenv is not available"
 		;;
 
@@ -737,7 +762,7 @@ unsafe_print_info() {
 	# - unsafe_dpv_internal_set_available_install_methods
 	#   - ERR_NO_AVAILABLE_INSTALL_METHODS
 	#
-	echo "dpv - $(basename "$DPV_VENV_DIR") activated"
+	echo "dpv - $(basename "$DPV_VIRTUALENV_DIR") activated"
 
 	# Check available installation methods
 	# If not possible, this will error out with: ERR_NO_AVAILABLE_INSTALL_METHODS
@@ -782,8 +807,13 @@ unsafe_pyenv_install() {
 	done
 }
 
-pyenv_get_python_executable() {
-	echo $(pyenv_exec prefix "$1")/bin/python
+unsafe_pyenv_get_python_executable() {
+	local cmd="$(pyenv_exec prefix "$INTERNAL_VIRTUALENV_PYTHON_VERSION")/bin/python"
+	if [ -x "$cmd" ]; then
+		echo "$cmd"
+	else
+		exit "$ERR_VIRTUALENV_CANNOT_FIND_PYTHON_EXECUTABLE"
+	fi
 }
 
 pyenv_load_installed_python_versions() {
@@ -878,8 +908,13 @@ homebrew_exec() {
 	"$CFG_HOMEBREW_EXECUTABLE" "$@"
 }
 
-homebrew_get_python_executable() {
-	echo "$(homebrew_exec --prefix $(homebrew_format_python_formula <<<"$1"))"/libexec/bin/python
+unsafe_homebrew_get_python_executable() {
+	local cmd="$(homebrew_exec --prefix $(homebrew_format_python_formula <<<"$INTERNAL_VIRTUALENV_PYTHON_VERSION") 2>/dev/null)"/libexec/bin/python
+	if [ -x "$cmd" ]; then
+		echo "$cmd"
+	else
+		exit "$ERR_VIRTUALENV_CANNOT_FIND_PYTHON_EXECUTABLE"
+	fi
 }
 
 homebrew_load_installed_python_versions() {
@@ -948,14 +983,14 @@ homebrew_expand_python_version() {
 #
 # Internals
 #
-dpv_internal_mkdir_venv() {
-	local dirname="$CFG_VENVS_DIR/$INTERNAL_VENV_PYTHON_VERSION/$(basename "$PWD")-$INTERNAL_VENV_PYTHON_VERSION"
+dpv_internal_mkdir_virtualenv() {
+	local dirname="$CFG_VIRTUALENVS_DIR/$INTERNAL_VIRTUALENV_PYTHON_VERSION/$(basename "$PWD")-$INTERNAL_VIRTUALENV_PYTHON_VERSION"
 	mkdir -p "$dirname"
 	printf $dirname
 }
 
-dpv_internal_mkdir_venv_temporary() {
-	local dirname="${TMPDIR:-/tmp/}$(basename "$PWD")-$INTERNAL_VENV_PYTHON_VERSION.tmpXXXXX"
+dpv_internal_mkdir_virtualenv_temporary() {
+	local dirname="${TMPDIR:-/tmp/}$(basename "$PWD")-$INTERNAL_VIRTUALENV_PYTHON_VERSION.tmpXXXXX"
 	mktemp -d "$dirname"
 	printf $dirname
 }

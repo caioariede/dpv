@@ -22,8 +22,8 @@ mock_log_file() {
 	INTERNAL_LOG_FILE="$1"
 }
 
-mock_venv_python_version() {
-	INTERNAL_VENV_PYTHON_VERSION="$1"
+mock_virtualenv_python_version() {
+	INTERNAL_VIRTUALENV_PYTHON_VERSION="$1"
 }
 
 mock_available_install_methods() {
@@ -44,11 +44,11 @@ mock_available_python_versions() {
 	eval "$var='$@'"
 }
 
-mock_venvs_dir() {
-	CFG_VENVS_DIR="$(pwd)/virtualenvs"
+mock_virtualenvs_dir() {
+	CFG_VIRTUALENVS_DIR="$(pwd)/virtualenvs"
 }
 
-mock_venv() {
+mock_virtualenv() {
 	local venv_install_method="$1"
 	shift
 	local venv_python_version="$1"
@@ -57,9 +57,9 @@ mock_venv() {
 	shift
 	local venv_name="$(basename "$project_path")"
 
-	local venv_path="$CFG_VENVS_DIR/$venv_python_version/$venv_name"
+	local venv_path="$CFG_VIRTUALENVS_DIR/$venv_python_version/$venv_name"
 
-	mkdir -p "$CFG_VENVS_DIR/$venv_python_version/$venv_name"
+	mkdir -p "$CFG_VIRTUALENVS_DIR/$venv_python_version/$venv_name"
 	printf "path = $project_path\nversion = $venv_python_version\ninstall_method = $venv_install_method\n" >"$venv_path/dpv.cfg"
 }
 
@@ -184,20 +184,20 @@ test_dpv_format_highlight_versions() { # @test
 	assert_line --index 3 "3.9.12*"
 }
 
-test_dpv_internal_mkdir_venv_temporary() { # @test
+test_dpv_internal_mkdir_virtualenv_temporary() { # @test
 	test_fn() {
-		mock_venv_python_version "99.9"
-		echo $(dpv_internal_mkdir_venv_temporary)
+		mock_virtualenv_python_version "99.9"
+		echo $(dpv_internal_mkdir_virtualenv_temporary)
 	}
 	run test_fn
 	assert_success
 	assert_output --partial "99.9"
 }
 
-test_dpv_internal_mkdir_venv() { # @test
+test_dpv_internal_mkdir_virtualenv() { # @test
 	test_fn() {
-		mock_venv_python_version "99.9"
-		echo $(dpv_internal_mkdir_venv)
+		mock_virtualenv_python_version "99.9"
+		echo $(dpv_internal_mkdir_virtualenv)
 	}
 	run test_fn
 	assert_success
@@ -208,7 +208,7 @@ test_dpv_internal_mkdir_venv() { # @test
 # vendor tests: pyenv
 #
 
-setup_pyenv_mock() {
+mock_pyenv() {
 	local cmd="${1:-echo}"
 	if [ "${BATS_MOCK_PYENV:-1}" -eq 1 ]; then
 		CFG_PYENV_EXECUTABLE="$cmd"
@@ -248,14 +248,31 @@ test_pyenv_load_installed_python_versions() { # @test
 	assert_success
 }
 
-test_pyenv_get_python_executable() { # @test
-	run pyenv_get_python_executable
+test_unsafe_pyenv_get_python_executable_success() { # @test
+	test_fn() {
+		INTERNAL_VIRTUALENV_PYTHON_VERSION="$TEST_CONFIG_MINOR_PYTHON_VERSION"
+
+		unsafe_pyenv_get_python_executable
+	}
+
+	run test_fn
 	assert_success
 	assert_output --partial "/bin/python"
 }
 
+test_unsafe_pyenv_get_python_executable_failure() { # @test
+	test_fn() {
+		INTERNAL_VIRTUALENV_PYTHON_VERSION="99.9"
+
+		unsafe_pyenv_get_python_executable
+	}
+
+	run test_fn
+	assert_failure
+}
+
 test_unsafe_pyenv_install_success() { # @test
-	setup_pyenv_mock
+	mock_pyenv
 
 	test_fn() {
 		echo "$TEST_CONFIG_MINOR_PYTHON_VERSION" | unsafe_pyenv_install
@@ -265,7 +282,7 @@ test_unsafe_pyenv_install_success() { # @test
 }
 
 test_unsafe_pyenv_install_failure() { # @test
-	setup_pyenv_mock "exit 1"
+	mock_pyenv "exit 1"
 
 	test_fn() {
 		echo "$TEST_CONFIG_MINOR_PYTHON_VERSION" | unsafe_pyenv_install
@@ -275,14 +292,14 @@ test_unsafe_pyenv_install_failure() { # @test
 }
 
 test_pyenv_exec() { # @test
-	setup_pyenv_mock
+	mock_pyenv
 
 	run pyenv_exec help
 	assert_success
 }
 
 test_pyenv_is_available() { # @test
-	setup_pyenv_mock
+	mock_pyenv
 
 	run pyenv_is_available
 	assert_success
@@ -297,7 +314,7 @@ test_pyenv_is_not_available() { # @test
 #
 # vendor tests: homebrew
 #
-setup_homebrew_mock() {
+mock_homebrew() {
 	local cmd="${1:-echo}"
 	if [ "${BATS_MOCK_HOMEBREW:-1}" -eq 1 ]; then
 		CFG_HOMEBREW_EXECUTABLE="$cmd"
@@ -305,7 +322,7 @@ setup_homebrew_mock() {
 }
 
 test_homebrew_is_available() { # @test
-	setup_homebrew_mock
+	mock_homebrew
 
 	run homebrew_is_available
 	assert_success
@@ -318,14 +335,14 @@ test_homebrew_is_not_available() { # @test
 }
 
 test_homebrew_exec() { # @test
-	setup_homebrew_mock
+	mock_homebrew
 
 	run homebrew_exec help
 	assert_success
 }
 
 test_unsafe_homebrew_install_success() { # @test
-	setup_homebrew_mock
+	mock_homebrew
 
 	test_fn() {
 		echo "$TEST_CONFIG_MAJOR_PYTHON_VERSION" | unsafe_homebrew_install
@@ -335,7 +352,7 @@ test_unsafe_homebrew_install_success() { # @test
 }
 
 test_unsafe_homebrew_install_failure() { # @test
-	setup_homebrew_mock "exit 1"
+	mock_homebrew "exit 1"
 
 	test_fn() {
 		echo "$TEST_CONFIG_MAJOR_PYTHON_VERSION" | unsafe_homebrew_install
@@ -344,10 +361,27 @@ test_unsafe_homebrew_install_failure() { # @test
 	assert_failure "$ERR_INSTALLATION_FAILED"
 }
 
-test_homebrew_get_python_executable() { # @test
-	run homebrew_get_python_executable
+test_unsafe_homebrew_get_python_executable_success() { # @test
+	test_fn() {
+		INTERNAL_VIRTUALENV_PYTHON_VERSION="$TEST_CONFIG_MAJOR_PYTHON_VERSION"
+
+		unsafe_homebrew_get_python_executable
+	}
+
+	run test_fn
 	assert_success
 	assert_output --partial "/bin/python"
+}
+
+test_unsafe_homebrew_get_python_executable_failure() { # @test
+	test_fn() {
+		INTERNAL_VIRTUALENV_PYTHON_VERSION="99.9"
+
+		unsafe_homebrew_get_python_executable
+	}
+
+	run test_fn
+	assert_failure
 }
 
 test_homebrew_load_available_python_versions() { # @test
@@ -474,32 +508,32 @@ test_dpv_internal_print_logs_with_logs() { # @test
 }
 
 test_dpv_internal_scan_virtualenv_match() { # @test
-	mock_venvs_dir
+	mock_virtualenvs_dir
 
 	test_fn() {
 		local project_path="$(pwd)/venv-1"
-		mock_venv "pyenv" "3.9.9" "$project_path"
+		mock_virtualenv "pyenv" "3.9.9" "$project_path"
 
 		PWD="$project_path" dpv_internal_scan_virtualenv
 
-		echo "$INTERNAL_VENV_PYTHON_VERSION"
-		echo "$INTERNAL_VENV_INSTALL_METHOD"
-		echo "$INTERNAL_VENV_DIR"
+		echo "$INTERNAL_VIRTUALENV_PYTHON_VERSION"
+		echo "$INTERNAL_VIRTUALENV_INSTALL_METHOD"
+		echo "$INTERNAL_VIRTUALENV_DIR"
 	}
 
 	run test_fn
 	assert_success
 	assert_line --index 0 "3.9.9"
 	assert_line --index 1 "pyenv"
-	assert_line --index 2 "$CFG_VENVS_DIR/3.9.9/venv-1"
+	assert_line --index 2 "$CFG_VIRTUALENVS_DIR/3.9.9/venv-1"
 }
 
 test_dpv_internal_scan_virtualenv_not_match() { # @test
-	mock_venvs_dir
+	mock_virtualenvs_dir
 
 	test_fn() {
 		local project_path="$(pwd)/venv-1"
-		mock_venv "pyenv" "3.9.9" "$project_path"
+		mock_virtualenv "pyenv" "3.9.9" "$project_path"
 
 		PWD="$(pwd)/venv-2" dpv_internal_scan_virtualenv
 	}
@@ -671,4 +705,38 @@ test_unsafe_dpv_internal_resolve_python_version_not_match() { # @test
 
 	run test_fn
 	assert_failure "$ERR_CANNOT_RESOLVE_PYTHON_VERSION"
+}
+
+tes_unsafe_dpv_internal_create_virtualenv_success() { # @test
+	mock_virtualenvs_dir
+
+	test_fn() {
+		INTERNAL_VIRTUALENV_INSTALL_METHOD="pyenv"
+		INTERNAL_VIRTUALENV_PYTHON_VERSION="$TEST_CONFIG_MINOR_PYTHON_VERSION"
+
+		PWD=venv_test unsafe_dpv_internal_create_virtualenv
+
+		test -f "$INTERNAL_VIRTUALENV_DIR"
+	}
+
+	run test_fn
+}
+
+tes_unsafe_dpv_internal_create_virtualenv_failure() { # @test
+	mock_virtualenvs_dir
+
+	test_fn() {
+		INTERNAL_VIRTUALENV_INSTALL_METHOD="pyenv"
+		INTERNAL_VIRTUALENV_PYTHON_VERSION="99.9" # non-existent version
+
+		local error
+		PWD=venv_test unsafe_dpv_internal_create_virtualenv || error="$?"
+
+		echo "$INTERNAL_VIRTUALENV_DIR"
+
+		exit "$error"
+	}
+
+	run test_fn
+	assert_failure "$ERR_CANNOT_CREATE_VIRTUALENV"
 }
