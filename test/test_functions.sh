@@ -209,8 +209,9 @@ test_dpv_internal_mkdir_venv() { # @test
 #
 
 setup_pyenv_mock() {
+	local cmd="${1:-echo}"
 	if [ "${BATS_MOCK_PYENV:-1}" -eq 1 ]; then
-		CFG_PYENV_EXECUTABLE=echo
+		CFG_PYENV_EXECUTABLE="$cmd"
 	fi
 }
 
@@ -253,14 +254,24 @@ test_pyenv_get_python_executable() { # @test
 	assert_output --partial "/bin/python"
 }
 
-test_pyenv_install() { # @test
+test_unsafe_pyenv_install_success() { # @test
 	setup_pyenv_mock
 
 	test_fn() {
-		echo "$TEST_CONFIG_MINOR_PYTHON_VERSION" | pyenv_install
+		echo "$TEST_CONFIG_MINOR_PYTHON_VERSION" | unsafe_pyenv_install
 	}
 	run test_fn
 	assert_success
+}
+
+test_unsafe_pyenv_install_failure() { # @test
+	setup_pyenv_mock "exit 1"
+
+	test_fn() {
+		echo "$TEST_CONFIG_MINOR_PYTHON_VERSION" | unsafe_pyenv_install
+	}
+	run test_fn
+	assert_failure "$ERR_INSTALLATION_FAILED"
 }
 
 test_pyenv_exec() { # @test
@@ -287,8 +298,9 @@ test_pyenv_is_not_available() { # @test
 # vendor tests: homebrew
 #
 setup_homebrew_mock() {
+	local cmd="${1:-echo}"
 	if [ "${BATS_MOCK_HOMEBREW:-1}" -eq 1 ]; then
-		CFG_HOMEBREW_EXECUTABLE=echo
+		CFG_HOMEBREW_EXECUTABLE="$cmd"
 	fi
 }
 
@@ -312,14 +324,24 @@ test_homebrew_exec() { # @test
 	assert_success
 }
 
-test_homebrew_install() { # @test
+test_unsafe_homebrew_install_success() { # @test
 	setup_homebrew_mock
 
 	test_fn() {
-		echo "$TEST_CONFIG_MAJOR_PYTHON_VERSION" | homebrew_install
+		echo "$TEST_CONFIG_MAJOR_PYTHON_VERSION" | unsafe_homebrew_install
 	}
 	run test_fn
 	assert_success
+}
+
+test_unsafe_homebrew_install_failure() { # @test
+	setup_homebrew_mock "exit 1"
+
+	test_fn() {
+		echo "$TEST_CONFIG_MAJOR_PYTHON_VERSION" | unsafe_homebrew_install
+	}
+	run test_fn
+	assert_failure "$ERR_INSTALLATION_FAILED"
 }
 
 test_homebrew_get_python_executable() { # @test

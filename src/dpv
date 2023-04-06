@@ -334,7 +334,7 @@ unsafe_init_virtualenv_vars() {
 	fi
 
 	# install Python version
-	${INTERNAL_VENV_INSTALL_METHOD}_install <<<"$INTERNAL_VENV_PYTHON_VERSION"
+	unsafe_${INTERNAL_VENV_INSTALL_METHOD}_install <<<"$INTERNAL_VENV_PYTHON_VERSION"
 
 	# create virtualenv
 	INTERNAL_VENV_PY_EXECUTABLE=$(${install}_get_python_executable "$INTERNAL_VENV_PYTHON_VERSION")
@@ -762,7 +762,7 @@ pyenv_exec() {
 	"$CFG_PYENV_EXECUTABLE" "$@"
 }
 
-pyenv_install() {
+unsafe_pyenv_install() {
 	while IFS= read -r python_version; do
 		if [[ "$INTERNAL_PYENV_INSTALLED_PYTHON_VERSIONS" == *"$python_version"* ]]; then
 			continue
@@ -854,14 +854,23 @@ homebrew_is_available() {
 	hash "$CFG_HOMEBREW_EXECUTABLE" 2>/dev/null
 }
 
-homebrew_install() {
+unsafe_homebrew_install() {
 	while IFS= read -r python_version; do
 		if [[ "$INTERNAL_HOMEBREW_INSTALLED_PYTHON_VERSIONS" == *"$python_version"* ]]; then
 			continue
 		fi
 		echo "installing python $python_version using homebrew"
-		HOMEBREW_NO_AUTO_UPDATE=1 homebrew_exec install $(homebrew_format_python_formula <<<"$python_version") 2>&1 | sed 's/^/  > /'
-		echo "ok"
+		local error=0
+		(
+			HOMEBREW_NO_AUTO_UPDATE=1 homebrew_exec install $(homebrew_format_python_formula <<<"$python_version") 2>&1 | sed 's/^/  > /'
+		) || error=1
+		if [ $error -eq 0 ]; then
+			echo done
+		else
+			echo failed
+			dpv_internal_log "homebrew: failed to install version $python_version"
+			exit "$ERR_INSTALLATION_FAILED"
+		fi
 	done
 }
 
