@@ -184,10 +184,20 @@ test_dpv_format_highlight_versions() { # @test
 	assert_line --index 3 "3.9.12*"
 }
 
-test_dpv_internal_mktemp_venv_dir() { # @test
+test_dpv_internal_mkdir_venv_temporary() { # @test
 	test_fn() {
 		mock_venv_python_version "99.9"
-		echo $(dpv_internal_mktemp_venv_dir)
+		echo $(dpv_internal_mkdir_venv_temporary)
+	}
+	run test_fn
+	assert_success
+	assert_output --partial "99.9"
+}
+
+test_dpv_internal_mkdir_venv() { # @test
+	test_fn() {
+		mock_venv_python_version "99.9"
+		echo $(dpv_internal_mkdir_venv)
 	}
 	run test_fn
 	assert_success
@@ -611,7 +621,7 @@ test_unsafe_dpv_internal_resolve_python_version_match_installed() { # @test
 test_unsafe_dpv_internal_resolve_python_version_match_available() { # @test
 	test_fn() {
 		mock_available_install_methods "pyenv"
-        mock_installed_python_versions "pyenv" ""
+		mock_installed_python_versions "pyenv" ""
 		mock_available_python_versions "pyenv" "3.9.4"
 
 		unsafe_dpv_internal_resolve_python_version "3.9"
@@ -623,13 +633,13 @@ test_unsafe_dpv_internal_resolve_python_version_match_available() { # @test
 	assert_success
 	assert_line --index 0 "3.9.4"
 	assert_line --index 1 "pyenv"
-    assert_log_output --partial "needs to be installed"
+	assert_log_output --partial "needs to be installed"
 }
 
 test_unsafe_dpv_internal_resolve_python_version_not_match() { # @test
 	test_fn() {
 		mock_available_install_methods "pyenv"
-        mock_installed_python_versions "pyenv" ""
+		mock_installed_python_versions "pyenv" ""
 		mock_available_python_versions "pyenv" "3.8.1"
 
 		unsafe_dpv_internal_resolve_python_version "3.9"

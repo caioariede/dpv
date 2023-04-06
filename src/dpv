@@ -319,17 +319,18 @@ unsafe_init_virtualenv_vars() {
 	unsafe_dpv_internal_scan_python_version
 
 	# Prompt user to confirm this is the Python version wanted
-	read -rp "python version [default: $INTERNAL_SCAN_PYTHON_VERSION source: $INTERNAL_SCAN_PYTHON_VERSION_SOURCE]: " INTERNAL_VENV_PYTHON_VERSION
-	INTERNAL_VENV_PYTHON_VERSION=${INTERNAL_VENV_PYTHON_VERSION:-$INTERNAL_SCAN_PYTHON_VERSION}
+	local python_version_user_input
+	read -rp "python version [default: $INTERNAL_SCAN_PYTHON_VERSION source: $INTERNAL_SCAN_PYTHON_VERSION_SOURCE]: " python_version_user_input
+	INTERNAL_VENV_PYTHON_VERSION="${python_version_user_input:-$INTERNAL_SCAN_PYTHON_VERSION}"
 
 	# Resolve Python version
 	# If not possible, this will error out with: ERR_CANNOT_RESOLVE_PYTHON_VERSION
 	unsafe_dpv_internal_resolve_python_version "$INTERNAL_VENV_PYTHON_VERSION"
 
 	if [ "${ARG_TEMP:-}" == "1" ]; then
-		INTERNAL_VENV_DIR=$(dpv_internal_mktemp_venv_dir)
+		INTERNAL_VENV_DIR=$(dpv_internal_mkdir_venv_temporary)
 	else
-		INTERNAL_VENV_DIR=${INTERNAL_VENV_DIR:-$CFG_VENVS_DIR/$INTERNAL_VENV_PYTHON_VERSION/$(basename "$PWD")-$INTERNAL_VENV_PYTHON_VERSION}
+		INTERNAL_VENV_DIR=$(dpv_internal_mkdir_venv)
 	fi
 
 	# install Python version
@@ -457,7 +458,7 @@ dpv_internal_scan_virtualenv() {
 					INTERNAL_VENV_PYTHON_VERSION=$version
 					INTERNAL_VENV_INSTALL_METHOD=$install_method
 					if [ "${ARG_TEMP:-}" == "1" ]; then
-						INTERNAL_VENV_DIR=$(dpv_internal_mktemp_venv_dir)
+						INTERNAL_VENV_DIR=$(dpv_internal_mkdir_venv_temporary)
 					else
 						INTERNAL_VENV_DIR=$(dirname "$file")
 					fi
@@ -486,7 +487,10 @@ unsafe_dpv_internal_scan_python_version() {
 	# - unsafe_dpv_internal_scan_python_version:
 	#   - ERR_CANNOT_DETERMINE_PYTHON_VERSION
 	#
-	dpv_check_is_set "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE" && return
+	if dpv_check_is_set "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"; then
+		# already set
+		return
+	fi
 
 	# use version provided by the user, if provided
 	if dpv_check_is_set "$INTERNAL_ARG_PYTHON_VERSION"; then
@@ -935,9 +939,16 @@ homebrew_expand_python_version() {
 #
 # Internals
 #
+dpv_internal_mkdir_venv() {
+	local dirname="$CFG_VENVS_DIR/$INTERNAL_VENV_PYTHON_VERSION/$(basename "$PWD")-$INTERNAL_VENV_PYTHON_VERSION"
+	mkdir -p "$dirname"
+	printf $dirname
+}
 
-dpv_internal_mktemp_venv_dir() {
-	mktemp -d "${TMPDIR:-/tmp/}$(basename "$PWD")-$INTERNAL_VENV_PYTHON_VERSION.tmpXXXXX"
+dpv_internal_mkdir_venv_temporary() {
+	local dirname="${TMPDIR:-/tmp/}$(basename "$PWD")-$INTERNAL_VENV_PYTHON_VERSION.tmpXXXXX"
+	mktemp -d "$dirname"
+	printf $dirname
 }
 
 dpv_internal_set_log_file() {
