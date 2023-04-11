@@ -58,20 +58,20 @@ CFG_HOMEBREW_EXECUTABLE="${HOMEBREW_EXECUTABLE:-brew}"
 CFG_PREFERRED_INSTALL_METHODS="pyenv homebrew"
 
 # VARS: Internal
-INTERNAL_PYENV_INSTALLED_PYTHON_VERSIONS="ø"
-INTERNAL_PYENV_AVAILABLE_PYTHON_VERSIONS="ø"
-INTERNAL_HOMEBREW_INSTALLED_PYTHON_VERSIONS="ø"
-INTERNAL_HOMEBREW_AVAILABLE_PYTHON_VERSIONS="ø"
-INTERNAL_AVAILABLE_INSTALL_METHODS="ø"
-INTERNAL_LOG_FILE="ø"
-INTERNAL_SCAN_PYTHON_VERSION="ø"
-INTERNAL_SCAN_PYTHON_VERSION_SOURCE="ø"
-INTERNAL_RESOLVE_PYTHON_VERSION="ø"
-INTERNAL_RESOLVE_INSTALL_METHOD="ø"
-INTERNAL_ARG_PYTHON_VERSION="ø"
-INTERNAL_VIRTUALENV_INSTALL_METHOD="ø"
-INTERNAL_VIRTUALENV_PYTHON_VERSION="ø"
-INTERNAL_VIRTUALENV_DIR="ø"
+INTERNAL_PYENV_INSTALLED_PYTHON_VERSIONS="${DPV_MOCK_PYENV_INSTALLED_PYTHON_VERSIONS:-ø}"
+INTERNAL_PYENV_AVAILABLE_PYTHON_VERSIONS="${DPV_MOCK_PYENV_AVAILABLE_PYTHON_VERSIONS:-ø}"
+INTERNAL_HOMEBREW_INSTALLED_PYTHON_VERSIONS="${DPV_MOCK_HOMEBREW_INSTALLED_PYTHON_VERSIONS:-ø}"
+INTERNAL_HOMEBREW_AVAILABLE_PYTHON_VERSIONS="${DPV_MOCK_HOMEBREW_AVAILABLE_PYTHON_VERSIONS:-ø}"
+INTERNAL_AVAILABLE_INSTALL_METHODS="${DPV_MOCK_AVAILABLE_INSTALL_METHODS:-ø}"
+INTERNAL_LOG_FILE="${DPV_MOCK_LOG_FILE:-ø}"
+INTERNAL_SCAN_PYTHON_VERSION="${DPV_MOCK_SCAN_PYTHON_VERSION:-ø}"
+INTERNAL_SCAN_PYTHON_VERSION_SOURCE="${DPV_MOCK_SCAN_PYTHON_VERSION_SOURCE:-ø}"
+INTERNAL_RESOLVE_PYTHON_VERSION="${DPV_MOCK_RESOLVE_PYTHON_VERSION:-ø}"
+INTERNAL_RESOLVE_INSTALL_METHOD="${DPV_MOCK_RESOLVE_INSTALL_METHOD:-ø}"
+INTERNAL_ARG_PYTHON_VERSION="${DPV_MOCK_ARG_PYTHON_VERSION:-ø}"
+INTERNAL_VIRTUALENV_INSTALL_METHOD="${DPV_MOCK_VIRTUALENV_INSTALL_METHOD:-ø}"
+INTERNAL_VIRTUALENV_PYTHON_VERSION="${DPV_MOCK_VIRTUALENV_PYTHON_VERSION:-ø}"
+INTERNAL_VIRTUALENV_DIR="${DPV_MOCK_VIRTUALENV_DIR:-ø}"
 
 #
 # Command functions
@@ -128,10 +128,10 @@ cmd_versions() {
 		echo
 
 		pyenv_load_installed_python_versions
-		echo "pyenv:" $(echo "$INTERNAL_PYENV_INSTALLED_PYTHON_VERSIONS" | dpv_format_highlight_versions "$INTERNAL_PYENV_INSTALLED_PYTHON_VERSIONS" | dpv_format_nl_to_space)
+		echo "pyenv:" $(echo "$INTERNAL_PYENV_INSTALLED_PYTHON_VERSIONS" | dpv_internal_filter_python_versions "pyenv" --all | dpv_format_nl_to_space)
 
 		homebrew_load_installed_python_versions
-		echo "homebrew:" $(echo "$INTERNAL_HOMEBREW_INSTALLED_PYTHON_VERSIONS" | dpv_format_highlight_versions "$INTERNAL_HOMEBREW_INSTALLED_PYTHON_VERSIONS" | dpv_format_nl_to_space)
+		echo "homebrew:" $(echo "$INTERNAL_HOMEBREW_INSTALLED_PYTHON_VERSIONS" | dpv_internal_filter_python_versions "homebrew" --all | dpv_format_nl_to_space)
 
 		;;
 
@@ -141,11 +141,11 @@ cmd_versions() {
 
 		pyenv_load_available_python_versions
 		pyenv_load_installed_python_versions
-		echo "pyenv:" $(echo "$INTERNAL_PYENV_AVAILABLE_PYTHON_VERSIONS" | dpv_format_highlight_versions "$INTERNAL_PYENV_INSTALLED_PYTHON_VERSIONS" | dpv_format_nl_to_space)
+		echo "pyenv:" $(echo "$INTERNAL_PYENV_AVAILABLE_PYTHON_VERSIONS" | dpv_internal_filter_python_versions "pyenv" --all | dpv_format_nl_to_space)
 
 		homebrew_load_available_python_versions
 		homebrew_load_installed_python_versions
-		echo "homebrew:" $(echo "$INTERNAL_HOMEBREW_AVAILABLE_PYTHON_VERSIONS" | dpv_format_highlight_versions "$INTERNAL_HOMEBREW_INSTALLED_PYTHON_VERSIONS" | dpv_format_nl_to_space)
+		echo "homebrew:" $(echo "$INTERNAL_HOMEBREW_AVAILABLE_PYTHON_VERSIONS" | dpv_internal_filter_python_versions "homebrew" --all | dpv_format_nl_to_space)
 		;;
 
 	"")
@@ -154,11 +154,11 @@ cmd_versions() {
 
 		pyenv_load_available_python_versions
 		pyenv_load_installed_python_versions
-		echo "pyenv:" $(echo "$INTERNAL_PYENV_AVAILABLE_PYTHON_VERSIONS" | dpv_filter_mainstream_version | dpv_filter_unique_major_versions | dpv_format_highlight_versions "$INTERNAL_PYENV_INSTALLED_PYTHON_VERSIONS" | dpv_format_nl_to_space)
+		echo "pyenv:" $(echo "$INTERNAL_PYENV_AVAILABLE_PYTHON_VERSIONS" | dpv_internal_filter_python_versions "pyenv" | dpv_format_nl_to_space)
 
 		homebrew_load_available_python_versions
 		homebrew_load_installed_python_versions
-		echo "homebrew: $(echo "$INTERNAL_HOMEBREW_AVAILABLE_PYTHON_VERSIONS" | dpv_filter_mainstream_version | dpv_filter_unique_major_versions | dpv_format_highlight_versions "$INTERNAL_HOMEBREW_INSTALLED_PYTHON_VERSIONS" | dpv_format_nl_to_space)"
+		echo "homebrew: $(echo "$INTERNAL_HOMEBREW_AVAILABLE_PYTHON_VERSIONS" | dpv_internal_filter_python_versions "homebrew" | dpv_format_nl_to_space)"
 		;;
 
 	*)
@@ -1048,6 +1048,71 @@ dpv_internal_log() {
 	echo -e "- $@" >>"$INTERNAL_LOG_FILE"
 }
 
+dpv_internal_filter_python_versions() {
+	local install_method="$1"
+	local options="${2:-}"
+
+	local installed_versions_var=$(tr '[:lower:]' '[:upper:]' <<<"INTERNAL_${install_method}_INSTALLED_PYTHON_VERSIONS")
+	local installed_versions=${!installed_versions_var}
+
+	if [[ " $options " == *" --all "* ]]; then
+		while IFS= read -r line; do
+			# check if installed
+			for version in $installed_versions; do
+				if [[ "$version" == "$line" ]]; then
+					echo "$version*"
+					continue 2
+				fi
+			done
+
+			echo $line
+		done
+
+	else
+		local skip
+
+		while IFS= read -r line; do
+			local major_version="$(dpv_format_major_version <<<"$line")"
+			local fallback_installed=""
+
+			# check if minor installed
+			for version in $installed_versions; do
+				if [[ "$version" == "$line" ]]; then
+					if [[ " $skip " != *" $line "* ]]; then
+						skip+=" $major_version "
+						echo "$version*"
+					fi
+					continue 2
+				elif [[ "$version" == "$major_version."* ]]; then
+					fallback_installed="$version"
+				fi
+			done
+
+			if [[ " $skip " == *" $major_version "* ]]; then
+				continue
+			else
+				skip+=" $major_version "
+			fi
+
+			# fallback
+			if [[ "$fallback_installed" != "" ]]; then
+				skip+=" $fallback_installed "
+				echo "$fallback_installed*"
+				continue
+			fi
+
+			# check if mainstream
+			if [[ ! "$line" =~ ^3.([789]|1[0-9]) ]] || [[ "$line" == *"rc"* ]] || [[ "$line" == *"dev"* ]]; then
+				# Skip non-mainstream versions
+				continue
+			fi
+
+			echo $line
+
+		done
+	fi
+}
+
 #
 # General utils
 #
@@ -1063,20 +1128,8 @@ dpv_format_major_version() {
 	cut -d. -f1,2
 }
 
-dpv_format_highlight_versions() {
-	local versions_to_highlight="$1"
-	local regex
-	regex=$(echo "$versions_to_highlight" | sed -E 's/(\.)/\\\1/g' | tr '\n' '|' | sed 's/|$//')
-	sed -E "s/($regex)/\\1*/g"
-}
-
 dpv_format_theme() {
 	"$CFG_THEME"
-}
-
-dpv_filter_mainstream_version() {
-	# Ignore versions 2.x, stackless, etc
-	grep '^3\.[0-9].\?'
 }
 
 dpv_filter_unique_major_versions() {

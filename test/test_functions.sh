@@ -16,68 +16,6 @@ setup() {
 }
 
 #
-# mocks
-#
-mock_log_file() {
-	INTERNAL_LOG_FILE="$1"
-}
-
-mock_virtualenv_python_version() {
-	INTERNAL_VIRTUALENV_PYTHON_VERSION="$1"
-}
-
-mock_available_install_methods() {
-	INTERNAL_AVAILABLE_INSTALL_METHODS="$@"
-}
-
-mock_installed_python_versions() {
-	local install="$(echo "$1" | tr '[:lower:]' '[:upper:'])"
-	local var="INTERNAL_${install}_INSTALLED_PYTHON_VERSIONS"
-	shift
-	eval "$var='$@'"
-}
-
-mock_available_python_versions() {
-	local install="$(echo "$1" | tr '[:lower:]' '[:upper:'])"
-	local var="INTERNAL_${install}_AVAILABLE_PYTHON_VERSIONS"
-	shift
-	eval "$var='$@'"
-}
-
-mock_virtualenvs_dir() {
-	CFG_VIRTUALENVS_DIR="$(pwd)/virtualenvs"
-}
-
-mock_virtualenv() {
-	local venv_install_method="$1"
-	shift
-	local venv_python_version="$1"
-	shift
-	local project_path="$1"
-	shift
-	local venv_name="$(basename "$project_path")"
-
-	local venv_path="$CFG_VIRTUALENVS_DIR/$venv_python_version/$venv_name"
-
-	mkdir -p "$CFG_VIRTUALENVS_DIR/$venv_python_version/$venv_name"
-	printf "path = $project_path\nversion = $venv_python_version\ninstall_method = $venv_install_method\n" >"$venv_path/dpv.cfg"
-}
-
-#
-# custom asserts
-#
-
-assert_log_output() {
-	run cat $INTERNAL_LOG_FILE
-	assert_output "$@"
-}
-
-refute_log_output() {
-	run cat $INTERNAL_LOG_FILE
-	refute_output "$@"
-}
-
-#
 # utility tests
 #
 test_dpv_check_is_set_true() { # @test
@@ -119,15 +57,6 @@ test_dpv_check_file_is_empty_false() { # @test
 	}
 	run test_fn
 	assert_failure
-}
-
-test_dpv_filter_mainstream_version() { # @test
-	test_fn() {
-		printf "2.7\njython-2.5.1\npypy2-5.7.1-src\n3.8.4\n3.9.16" | dpv_filter_mainstream_version
-	}
-	run test_fn
-	assert_line --index 0 "3.8.4"
-	assert_line --index 1 "3.9.16"
 }
 
 test_dpv_filter_unique_major_versions() { # @test
@@ -172,18 +101,6 @@ test_dpv_format_nl_to_space() { # @test
 	assert_output "3.9.2 3.8.4 3.11-dev"
 }
 
-test_dpv_format_highlight_versions() { # @test
-	test_fn() {
-		local versions_to_highlight="$(printf "3.8.4\n3.9.12")"
-		printf "2.7\n3.8.4\n3.9.0\n3.9.12" | dpv_format_highlight_versions "$versions_to_highlight"
-	}
-	run test_fn
-	assert_line --index 0 "2.7"
-	assert_line --index 1 "3.8.4*"
-	assert_line --index 2 "3.9.0"
-	assert_line --index 3 "3.9.12*"
-}
-
 test_dpv_internal_mkdir_virtualenv_temporary() { # @test
 	test_fn() {
 		mock_virtualenv_python_version "99.9"
@@ -202,6 +119,33 @@ test_dpv_internal_mkdir_virtualenv() { # @test
 	run test_fn
 	assert_success
 	assert_output --partial "99.9"
+}
+
+test_dpv_internal_filter_python_versions() { # @test
+	test_fn() {
+		mock_available_install_methods "pyenv"
+		mock_available_python_versions "pyenv" "3.9.2 3.9.1 3.8 2.7"
+		mock_installed_python_versions "pyenv" "3.9.1"
+
+		printf "3.9.2\n3.9.1\n3.8\n2.7\n" | dpv_internal_filter_python_versions "pyenv"
+	}
+	run test_fn
+	assert_line --index 0 "3.9.1*"
+	assert_line --index 1 "3.8"
+}
+
+test_dpv_internal_filter_python_versions_all() { # @test
+	test_fn() {
+		mock_available_install_methods "pyenv"
+		mock_available_python_versions "pyenv" "3.9.2 3.9.1 3.8 2.7"
+		mock_installed_python_versions "pyenv" "3.9.1"
+
+		printf "3.9.2\n3.9.1\n3.8\n2.7\n" | dpv_internal_filter_python_versions "pyenv" --all
+	}
+	run test_fn
+	assert_line --index 0 "3.9.2"
+	assert_line --index 1 "3.9.1*"
+	assert_line --index 2 "3.8"
 }
 
 #
@@ -707,7 +651,7 @@ test_unsafe_dpv_internal_resolve_python_version_not_match() { # @test
 	assert_failure "$ERR_CANNOT_RESOLVE_PYTHON_VERSION"
 }
 
-tes_unsafe_dpv_internal_create_virtualenv_success() { # @test
+test_unsafe_dpv_internal_create_virtualenv_success() { # @test
 	mock_virtualenvs_dir
 
 	test_fn() {
@@ -722,7 +666,7 @@ tes_unsafe_dpv_internal_create_virtualenv_success() { # @test
 	run test_fn
 }
 
-tes_unsafe_dpv_internal_create_virtualenv_failure() { # @test
+test_unsafe_dpv_internal_create_virtualenv_failure() { # @test
 	mock_virtualenvs_dir
 
 	test_fn() {
