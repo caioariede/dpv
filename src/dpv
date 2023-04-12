@@ -52,7 +52,7 @@ ERR_VIRTUALENV_CANNOT_FIND_PYTHON_EXECUTABLE=141
 CFG_VERSION="0.9.2"
 CFG_THEME="${DPV_THEME:-cat}"
 CFG_DIR="${DPV_DIR:-$HOME/.dpv}"
-CFG_VIRTUALENVS_DIR="$CFG_DIR/virtualenvs"
+CFG_VIRTUALENVS_DIR="${DPV_MOCK_VIRTUALENVS_DIR:-$CFG_DIR/virtualenvs}"
 CFG_PYENV_EXECUTABLE="${PYENV_EXECUTABLE:-pyenv}"
 CFG_HOMEBREW_EXECUTABLE="${HOMEBREW_EXECUTABLE:-brew}"
 CFG_PREFERRED_INSTALL_METHODS="pyenv homebrew"
@@ -196,7 +196,10 @@ cmd_list() {
 	echo "command: list of virtualenvs"
 	echo
 
-	find "$CFG_VIRTUALENVS_DIR" -maxdepth 2 -mindepth 2 | sort
+	mkdir -p "$CFG_VIRTUALENVS_DIR"
+	local sort_key="$(($(tr -cd '/' <<<"$CFG_VIRTUALENVS_DIR" | wc -c) + 3))"
+
+	find "$CFG_VIRTUALENVS_DIR" -maxdepth 2 -mindepth 2 | sort --field-separator=/ --key "$sort_key" --ignore-case
 }
 
 cmd_info() {

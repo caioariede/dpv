@@ -19,28 +19,28 @@ cd "$PRJ_DIR" || exit
 mock_log_file() {
 	INTERNAL_LOG_FILE="$1"
 
-    # for command tests:
+	# for command tests:
 	export DPV_MOCK_LOG_FILE="$1"
 }
 
 mock_virtualenv_python_version() {
 	INTERNAL_VIRTUALENV_PYTHON_VERSION="$1"
 
-    # for command tests:
+	# for command tests:
 	export DPV_MOCK_VIRTUALENV_PYTHON_VERSION="$1"
 }
 
 mock_available_install_methods() {
 	INTERNAL_AVAILABLE_INSTALL_METHODS="$@"
 
-    # for command tests:
+	# for command tests:
 	export DPV_MOCK_AVAILABLE_INSTALL_METHODS="$@"
 }
 
 mock_installed_python_versions() {
 	local install="$(echo "$1" | tr '[:lower:]' '[:upper:'])"
 	shift
-    local versions=$(echo $@ | tr " " "\n")
+	local versions=$(echo $@ | tr " " "\n")
 	local var="INTERNAL_${install}_INSTALLED_PYTHON_VERSIONS"
 	local mock_var="export DPV_MOCK_${install}_INSTALLED_PYTHON_VERSIONS"
 	eval "$var='$versions'"
@@ -50,7 +50,7 @@ mock_installed_python_versions() {
 mock_available_python_versions() {
 	local install="$(echo "$1" | tr '[:lower:]' '[:upper:'])"
 	shift
-    local versions=$(echo $@ | tr " " "\n")
+	local versions=$(echo $@ | tr " " "\n")
 	local var="INTERNAL_${install}_AVAILABLE_PYTHON_VERSIONS"
 	local mock_var="export DPV_MOCK_${install}_AVAILABLE_PYTHON_VERSIONS"
 	eval "$var='$versions'"
@@ -59,6 +59,9 @@ mock_available_python_versions() {
 
 mock_virtualenvs_dir() {
 	CFG_VIRTUALENVS_DIR="$(pwd)/virtualenvs"
+
+	# for command tests:
+	export DPV_MOCK_VIRTUALENVS_DIR="$(pwd)/virtualenvs"
 }
 
 mock_virtualenv() {
@@ -70,9 +73,8 @@ mock_virtualenv() {
 	shift
 	local venv_name="$(basename "$project_path")"
 
-	local venv_path="$CFG_VIRTUALENVS_DIR/$venv_python_version/$venv_name"
-
-	mkdir -p "$CFG_VIRTUALENVS_DIR/$venv_python_version/$venv_name"
+	local venv_path="$DPV_MOCK_VIRTUALENVS_DIR/$venv_python_version/$venv_name"
+	mkdir -p "$DPV_MOCK_VIRTUALENVS_DIR/$venv_python_version/$venv_name"
 	printf "path = $project_path\nversion = $venv_python_version\ninstall_method = $venv_install_method\n" >"$venv_path/dpv.cfg"
 }
 

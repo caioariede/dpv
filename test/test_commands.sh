@@ -108,6 +108,19 @@ test_cmd_drop() { # @test
 }
 
 test_cmd_list() { # @test
+	test_fn() {
+		mock_virtualenvs_dir
+
+		mock_virtualenv "pyenv" "3.9.1" "$(pwd)/def"
+		mock_virtualenv "pyenv" "3.9.2" "$(pwd)/abc"
+
+		dpv list
+	}
+
+	run test_fn
+	assert_success
+	assert_line --index 1 --partial "virtualenvs/3.9.2/abc"
+	assert_line --index 2 --partial "virtualenvs/3.9.1/def"
 }
 
 test_cmd_info() { # @test
