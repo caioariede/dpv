@@ -859,7 +859,7 @@ unsafe_pyenv_install() {
 
 unsafe_pyenv_get_python_executable() {
 	local prefix="$(pyenv_exec prefix "$INTERNAL_VIRTUALENV_PYTHON_VERSION")"
-	if [ "$?" -eq 0 ]; then
+	if [ "$?" -eq 0 ] && [ -d "$prefix" ]; then
 		local cmd="$prefix/bin/python"
 		if [ -x "$cmd" ]; then
 			echo "$cmd"
