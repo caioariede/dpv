@@ -110,13 +110,8 @@ cmd_help() {
 	echo "  dpv versions / -v"
 	echo "  dpv versions --all / -a"
 	echo
-	echo "config:"
-	echo "  CFG_VIRTUALENVS_DIR=$CFG_VIRTUALENVS_DIR"
-	echo "  CFG_THEME=$CFG_THEME"
-	echo "  CFG_DIR=$CFG_DIR"
-	echo "  CFG_PYENV_EXECUTABLE=$CFG_PYENV_EXECUTABLE"
-	echo "  CFG_HOMEBREW_EXECUTABLE=$CFG_HOMEBREW_EXECUTABLE"
-	echo "  CFG_PREFERRED_INSTALL_METHODS=$CFG_PREFERRED_INSTALL_METHODS"
+
+	dpv_internal_print_config
 }
 
 cmd_versions() {
@@ -203,9 +198,23 @@ cmd_list() {
 }
 
 cmd_info() {
-	trap 'error_handling $?' EXIT
+	echo "command: info"
+	echo
 
-	unsafe_print_info
+	if dpv_check_is_set "$DPV_VIRTUALENV_DIR"; then
+		while IFS= read -r line; do
+			declare "$(dpv_kv_parse_key "$line")"="$(dpv_kv_parse_val "$line")"
+		done < <(dpv_internal_parse_virtualenv_config_file "$DPV_VIRTUALENV_DIR/dpv.cfg")
+
+		printf "current virtualenv:\n"
+		printf "  virtualenv path: $DPV_VIRTUALENV_DIR\n"
+		printf "  project path: $path\n"
+		printf "  python version: $version\n"
+		printf "  installation method: $install_method\n"
+		printf "\n"
+	fi
+
+	dpv_internal_print_config
 }
 
 unsafe_wrap_cmd_run() {
@@ -282,8 +291,18 @@ unsafe_cmd_run() {
 }
 
 #
-# Initialization functions
+# Internal functions
 #
+
+dpv_internal_print_config() {
+	printf "config:\n"
+	printf "  CFG_VIRTUALENVS_DIR=$CFG_VIRTUALENVS_DIR\n"
+	printf "  CFG_THEME=$CFG_THEME\n"
+	printf "  CFG_DIR=$CFG_DIR\n"
+	printf "  CFG_PYENV_EXECUTABLE=$CFG_PYENV_EXECUTABLE\n"
+	printf "  CFG_HOMEBREW_EXECUTABLE=$CFG_HOMEBREW_EXECUTABLE\n"
+	printf "  CFG_PREFERRED_INSTALL_METHODS=$CFG_PREFERRED_INSTALL_METHODS\n"
+}
 
 unsafe_dpv_internal_initialize_virtualenv() {
 	#
@@ -468,17 +487,9 @@ dpv_internal_scan_virtualenv() {
 	# try to locate existing virtualenv
 	while IFS= read -r file; do
 		local path
-		local version
-		local install_method
 		while IFS= read -r line; do
-			if [[ "$line" =~ ^path\ *=\ *(.*) ]]; then
-				path="${BASH_REMATCH[1]}"
-			elif [[ "$line" =~ ^version\ *=\ *(.*) ]]; then
-				version="${BASH_REMATCH[1]}"
-			elif [[ "$line" =~ ^install_method\ *=\ *(.*) ]]; then
-				install_method="${BASH_REMATCH[1]}"
-			fi
-		done <"$file"
+			declare "$(dpv_kv_parse_key "$line")"="$(dpv_kv_parse_val "$line")"
+		done < <(dpv_internal_parse_virtualenv_config_file "$file")
 		if [[ "$path" == "$PWD" ]]; then
 			if ! dpv_check_is_set "$INTERNAL_ARG_PYTHON_VERSION" || [[ "$version" == "$INTERNAL_ARG_PYTHON_VERSION"* ]]; then
 				if ! dpv_check_is_set "$INTERNAL_VIRTUALENV_PYTHON_VERSION"; then
@@ -583,6 +594,39 @@ unsafe_dpv_internal_scan_python_version() {
 	fi
 
 	exit "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
+}
+
+dpv_internal_parse_virtualenv_config_file() {
+	local config_file="$1"
+
+	local path=""
+	local version=""
+	local install_method=""
+
+	while IFS= read -r line; do
+		if [[ "$line" =~ ^path\ *=\ *(.*) ]]; then
+			path="${BASH_REMATCH[1]}"
+		elif [[ "$line" =~ ^version\ *=\ *(.*) ]]; then
+			version="${BASH_REMATCH[1]}"
+		elif [[ "$line" =~ ^install_method\ *=\ *(.*) ]]; then
+			install_method="${BASH_REMATCH[1]}"
+		fi
+	done <"$config_file"
+
+	local missing
+	if dpv_check_string_is_empty "$path"; then missing+=", path"; fi
+	if dpv_check_string_is_empty "$version"; then missing+=", version"; fi
+	if dpv_check_string_is_empty "$install_method"; then missing+=", install_method"; fi
+
+	if dpv_check_string_is_empty "$missing"; then
+		echo "path = $path"
+		echo "version = $version"
+		echo "install_method = $install_method"
+	else
+		missing="$(dpv_string_lstrip 2 <<<"$missing")"
+		dpv_internal_log "virtualenv config file missing: $missing (file: $config_file)"
+		return 1
+	fi
 }
 
 #
@@ -1159,6 +1203,21 @@ dpv_check_string_is_empty() {
 dpv_check_is_set() {
 	# "ø" :: Special value for empty/unset
 	[[ "$1" != "ø" ]]
+}
+
+dpv_string_lstrip() {
+	local remove_after_including="$(($1 + 1))"
+	cut -c "$remove_after_including"-
+}
+
+dpv_kv_parse_key() {
+	# https://stackoverflow.com/a/20348190
+	echo ${@%% = *}
+}
+
+dpv_kv_parse_val() {
+	# https://stackoverflow.com/a/15149278
+	echo ${@#* = }
 }
 
 # https://stackoverflow.com/a/28776166

@@ -123,5 +123,34 @@ test_cmd_list() { # @test
 	assert_line --index 2 --partial "virtualenvs/3.9.1/def"
 }
 
-test_cmd_info() { # @test
+test_cmd_info_not_activated() { # @test
+	run dpv info
+
+	assert_success
+
+	# should show config
+	assert_output --partial "config:"
+}
+
+test_cmd_info_activated() { # @test
+	mock_virtualenvs_dir
+
+	test_fn() {
+		local project_path="$(pwd)/venv-1"
+		mock_virtualenv "pyenv" "3.9.9" "$project_path"
+
+		PWD="$project_path" dpv_internal_scan_virtualenv
+
+		dpv info
+	}
+
+	run test_fn
+
+	assert_success
+
+	# should show config
+	assert_output --partial "config:"
+	# should show virtualenv config
+	assert_output --partial "virtualenv:"
+
 }

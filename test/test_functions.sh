@@ -101,6 +101,34 @@ test_dpv_format_nl_to_space() { # @test
 	assert_output "3.9.2 3.8.4 3.11-dev"
 }
 
+test_dpv_string_lstrip() { # @test
+	test_fn() {
+		printf "foobar" | dpv_string_lstrip 2
+	}
+	run test_fn
+	assert_output "obar"
+}
+
+test_dpv_kv_parse_key() { # @test
+	test_fn() {
+		dpv_kv_parse_key "foo = bar = baz"
+	}
+	run test_fn
+	assert_output "foo"
+}
+
+test_dpv_kv_parse_val() { # @test
+	test_fn() {
+		dpv_kv_parse_val "foo = bar = baz"
+	}
+	run test_fn
+	assert_output "bar = baz"
+}
+
+#
+# internal utility tests
+#
+
 test_dpv_internal_mkdir_virtualenv_temporary() { # @test
 	test_fn() {
 		mock_virtualenv_python_version "99.9"
@@ -146,6 +174,25 @@ test_dpv_internal_filter_python_versions_all() { # @test
 	assert_line --index 0 "3.9.2"
 	assert_line --index 1 "3.9.1*"
 	assert_line --index 2 "3.8"
+}
+
+test_dpv_internal_parse_virtualenv_config_file() { # @test
+	mock_virtualenvs_dir
+
+	test_fn() {
+		local project_path="$(pwd)/venv-1"
+		mock_virtualenv "pyenv" "3.9.9" "$project_path"
+
+		PWD="$project_path" dpv_internal_scan_virtualenv
+
+		dpv_internal_parse_virtualenv_config_file "$INTERNAL_VIRTUALENV_DIR/dpv.cfg"
+	}
+
+	run test_fn
+	assert_success
+	assert_line --index 0 "path = $(pwd)/venv-1"
+	assert_line --index 1 "version = 3.9.9"
+	assert_line --index 2 "install_method = pyenv"
 }
 
 #
