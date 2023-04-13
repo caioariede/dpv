@@ -206,15 +206,15 @@ cmd_info() {
 			declare "$(dpv_kv_parse_key "$line")"="$(dpv_kv_parse_val "$line")"
 		done < <(dpv_internal_parse_virtualenv_config_file "$DPV_VIRTUALENV_DIR/dpv.cfg")
 
-        printf "status: activated\n\n"
+		printf "status: activated\n\n"
 		printf "current virtualenv:\n"
 		printf "  virtualenv path: $DPV_VIRTUALENV_DIR\n"
 		printf "  project path: $path\n"
 		printf "  python version: $version\n"
 		printf "  installation method: $install_method\n"
 		printf "\n"
-    else
-        printf "status: not activated\n\n"
+	else
+		printf "status: not activated\n\n"
 	fi
 
 	dpv_internal_print_config
@@ -858,12 +858,15 @@ unsafe_pyenv_install() {
 }
 
 unsafe_pyenv_get_python_executable() {
-	local cmd="$(pyenv_exec prefix "$INTERNAL_VIRTUALENV_PYTHON_VERSION")/bin/python"
-	if [ -x "$cmd" ]; then
-		echo "$cmd"
-	else
-		exit "$ERR_VIRTUALENV_CANNOT_FIND_PYTHON_EXECUTABLE"
+	local prefix="$(pyenv_exec prefix "$INTERNAL_VIRTUALENV_PYTHON_VERSION")"
+	if [ "$?" -eq 0 ]; then
+		local cmd="$(pyenv_exec prefix "$INTERNAL_VIRTUALENV_PYTHON_VERSION")/bin/python"
+		if [ -x "$cmd" ]; then
+			echo "$cmd"
+			return
+		fi
 	fi
+	exit "$ERR_VIRTUALENV_CANNOT_FIND_PYTHON_EXECUTABLE"
 }
 
 pyenv_load_installed_python_versions() {
