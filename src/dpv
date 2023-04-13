@@ -206,12 +206,15 @@ cmd_info() {
 			declare "$(dpv_kv_parse_key "$line")"="$(dpv_kv_parse_val "$line")"
 		done < <(dpv_internal_parse_virtualenv_config_file "$DPV_VIRTUALENV_DIR/dpv.cfg")
 
+        printf "status: activated\n\n"
 		printf "current virtualenv:\n"
 		printf "  virtualenv path: $DPV_VIRTUALENV_DIR\n"
 		printf "  project path: $path\n"
 		printf "  python version: $version\n"
 		printf "  installation method: $install_method\n"
 		printf "\n"
+    else
+        printf "status: not activated\n\n"
 	fi
 
 	dpv_internal_print_config

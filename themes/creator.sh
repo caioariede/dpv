@@ -2,15 +2,17 @@
 
 SED_SCRIPT=$'
 /^command:/ {
-    1s/^command: (.*)/\\1/
-    h
-    p
-    s/./-/g
+    s/command:/dpv →/
     n
     :list
     n
     s/^(\\/.*)\\/(.*)$/→ \e[38;5;81m\\2\e[0m in \e[38;5;249m\\1\e[0m/
     t list
+}
+
+/^status: / {
+    s/status: (not activated)/status: \e[0;33m\\1\e[0m/
+    s/status: (activated)/status: \e[0;32m\\1\e[0m/
 }
 
 /^(pyenv|homebrew):/ {
@@ -40,6 +42,13 @@ SED_SCRIPT=$'
     s/^    --.*/\e[38;5;249m&\e[0m/
     t commandsblock
 
+}
+
+/^current virtualenv:/ {
+    :venvblock
+    n
+    s/^( +)([^:]+):(.*)/\\1\e[38;5;81m\\2\e[0m:\e[38;5;249m\\3\e[0m/g
+    t venvblock
 }
 
 '

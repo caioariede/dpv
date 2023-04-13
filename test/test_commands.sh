@@ -127,6 +127,7 @@ test_cmd_info_not_activated() { # @test
 	run dpv info
 
 	assert_success
+	assert_output --partial "status: not activated"
 
 	# should show config
 	assert_output --partial "config:"
@@ -139,7 +140,7 @@ test_cmd_info_activated() { # @test
 		local project_path="$(pwd)/venv-1"
 		mock_virtualenv "pyenv" "3.9.9" "$project_path"
 
-		PWD="$project_path" dpv_internal_scan_virtualenv
+		export DPV_VIRTUALENV_DIR="$DPV_MOCK_VIRTUALENVS_DIR/3.9.9/venv-1"
 
 		dpv info
 	}
@@ -147,6 +148,7 @@ test_cmd_info_activated() { # @test
 	run test_fn
 
 	assert_success
+	assert_output --partial "status: activated"
 
 	# should show config
 	assert_output --partial "config:"
