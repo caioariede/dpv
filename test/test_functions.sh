@@ -201,7 +201,8 @@ test_dpv_internal_parse_virtualenv_config_file() { # @test
 
 mock_pyenv() {
 	local cmd="${1:-echo}"
-	if [ "${BATS_MOCK_PYENV:-1}" -eq 1 ]; then
+	local options="${2:-}"
+	if [ "${BATS_MOCK_PYENV:-1}" -eq 1 ] || [[ " $options " == *" --force-mock "* ]]; then
 		CFG_PYENV_EXECUTABLE="$cmd"
 	fi
 }
@@ -263,7 +264,7 @@ test_unsafe_pyenv_get_python_executable_failure() { # @test
 }
 
 test_unsafe_pyenv_install_success() { # @test
-	mock_pyenv
+	mock_pyenv "echo" --force-mock
 
 	test_fn() {
 		echo "$TEST_CONFIG_MINOR_PYTHON_VERSION" | unsafe_pyenv_install
@@ -273,7 +274,7 @@ test_unsafe_pyenv_install_success() { # @test
 }
 
 test_unsafe_pyenv_install_failure() { # @test
-	mock_pyenv "exit 1"
+	mock_pyenv "exit 1" --force-mock
 
 	test_fn() {
 		echo "$TEST_CONFIG_MINOR_PYTHON_VERSION" | unsafe_pyenv_install
