@@ -307,7 +307,8 @@ test_pyenv_is_not_available() { # @test
 #
 mock_homebrew() {
 	local cmd="${1:-echo}"
-	if [ "${BATS_MOCK_HOMEBREW:-1}" -eq 1 ]; then
+	local options="${2:-}"
+	if [ "${BATS_MOCK_HOMEBREW:-1}" -eq 1 ] || [[ " $options " == *" --force-mock "* ]]; then
 		CFG_HOMEBREW_EXECUTABLE="$cmd"
 	fi
 }
@@ -343,7 +344,7 @@ test_unsafe_homebrew_install_success() { # @test
 }
 
 test_unsafe_homebrew_install_failure() { # @test
-	mock_homebrew "exit 1"
+	mock_homebrew "exit 1" --force-mock
 
 	test_fn() {
 		echo "$TEST_CONFIG_MAJOR_PYTHON_VERSION" | unsafe_homebrew_install
