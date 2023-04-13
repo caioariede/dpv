@@ -64,5 +64,5 @@ jobs:
 
       - run: ./runtest.sh test/test_functions.sh --filter "${{ matrix.installer }}"
         env:
-          - BATS_MOCK_HOMEBREW: 0
-          - BATS_MOCK_PYENV: 0
+          BATS_MOCK_HOMEBREW: 0
+          BATS_MOCK_PYENV: 0
