@@ -37,14 +37,6 @@ aliases:
   dpv list / --list / ls / -l
   dpv versions / -v
   dpv versions --all / -a
-
-config:
-   CFG_VENVS_DIR=/Users/caio/.dpv/virtualenvs
-   CFG_THEME=/Users/caio/Projects/caio/dpv/themes/creator.sh
-   CFG_DIR=/Users/caio/.dpv
-   CFG_PYENV_EXECUTABLE=pyenv
-   CFG_HOMEBREW_EXECUTABLE=brew
-   CFG_PREFERRED_INSTALL_METHODS=pyenv homebrew
 ```
 
 ## Installation
