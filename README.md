@@ -50,7 +50,7 @@ bash -c 'curl -fsSLo $1 https://raw.githubusercontent.com/caioariede/dpv/HEAD/sr
 2. **Configure** — Add the following line to your .bashrc, .zshrc, etc
 
 ```bash
-eval "$(dpv internal-instrument)"
+eval "$(dpv internal-load-shell)"
 ```
 
 3. **Try it**

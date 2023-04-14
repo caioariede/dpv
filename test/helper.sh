@@ -38,7 +38,7 @@ mock_available_install_methods() {
 }
 
 mock_installed_python_versions() {
-	local install="$(echo "$1" | tr '[:lower:]' '[:upper:'])"
+	local install="$1"
 	shift
 	local versions=$(echo $@ | tr " " "\n")
 	local var="INTERNAL_${install}_INSTALLED_PYTHON_VERSIONS"
@@ -48,7 +48,7 @@ mock_installed_python_versions() {
 }
 
 mock_available_python_versions() {
-	local install="$(echo "$1" | tr '[:lower:]' '[:upper:'])"
+	local install="$1"
 	shift
 	local versions=$(echo $@ | tr " " "\n")
 	local var="INTERNAL_${install}_AVAILABLE_PYTHON_VERSIONS"

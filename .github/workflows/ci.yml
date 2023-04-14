@@ -29,7 +29,7 @@ jobs:
         run: bash --version
 
       - name: Test functions with pyenv
-        run: ./runtest.sh test/test_functions.sh --filter "pyenv"
+        run: ./runtest.sh test/test_functions.sh --filter "PYENV"
 
       - name: Test commands
         run: ./runtest.sh test/test_commands.sh
@@ -50,7 +50,7 @@ jobs:
         run: bash --version
 
       - name: Test functions with homebrew
-        run: ./runtest.sh test/test_functions.sh --filter "homebrew"
+        run: ./runtest.sh test/test_functions.sh --filter "HOMEBREW"
         env:
           BATS_MOCK_HOMEBREW: 0
 
@@ -76,7 +76,7 @@ jobs:
         run: pyenv install "${{ matrix.python }}"
 
       - name: Test functions with pyenv
-        run: ./runtest.sh test/test_functions.sh --filter "pyenv"
+        run: ./runtest.sh test/test_functions.sh --filter "PYENV"
         env:
           BATS_MOCK_PYENV: 0
 
