@@ -616,16 +616,16 @@ dpv_internal_parse_virtualenv_config_file() {
 		fi
 	done <"$config_file"
 
+	echo "path = $path"
+	echo "version = $version"
+	echo "install_method = $install_method"
+
 	local missing
 	if dpv_check_string_is_empty "$path"; then missing+=", path"; fi
 	if dpv_check_string_is_empty "$version"; then missing+=", version"; fi
 	if dpv_check_string_is_empty "$install_method"; then missing+=", install_method"; fi
 
 	if dpv_check_string_is_empty "$missing"; then
-		echo "path = $path"
-		echo "version = $version"
-		echo "install_method = $install_method"
-	else
 		missing="$(dpv_string_lstrip 2 <<<"$missing")"
 		dpv_internal_log "virtualenv config file missing: $missing (file: $config_file)"
 		return 1
