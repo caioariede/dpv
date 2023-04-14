@@ -1,10 +1,6 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
     branches: [main]
   pull_request:
@@ -13,22 +9,15 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   ubuntu:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python:
           - "3.9.10"
-        installer:
-          - pyenv
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
         with:
           submodules: recursive
@@ -36,33 +25,36 @@ jobs:
         with:
           default: "${{ matrix.python }}"
 
-      - run: ./runtest.sh test/test_functions.sh --filter "${{ matrix.installer }}"
+      # Test functions with pyenv
+      - run: ./runtest.sh test/test_functions.sh --filter "pyenv"
+
+      # Test commands
+      - run: ./runtest.sh test/test_commands.sh
 
   macos:
-    # The type of runner that the job will run on
     runs-on: macos-latest
     strategy:
       matrix:
         python:
           - "3.9.10"
-        installer:
-          - pyenv
-          - homebrew
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
         with:
           submodules: recursive
 
-      - run: brew install pyenv
-        if: matrix.installer == 'pyenv'
-
-      - run: pyenv install "${{ matrix.python }}"
-        if: matrix.installer == 'pyenv'
-
-      - run: ./runtest.sh test/test_functions.sh --filter "${{ matrix.installer }}"
+      # Test functions with homebrew alone (pyenv is not installed at this point)
+      - run: ./runtest.sh test/test_functions.sh --filter "homebrew"
         env:
           BATS_MOCK_HOMEBREW: 0
+
+      # Test functions with pyenv (both homebrew and pyenv are installed at this point)
+      - run: brew install pyenv
+      - run: pyenv install "${{ matrix.python }}"
+
+      - run: ./runtest.sh test/test_functions.sh --filter "pyenv"
+        env:
           BATS_MOCK_PYENV: 0
+
+      # Test commands
+      - run: ./runtest.sh test/test_commands.sh
