@@ -25,11 +25,14 @@ jobs:
         with:
           default: "${{ matrix.python }}"
 
-      # Test functions with pyenv
-      - run: ./runtest.sh test/test_functions.sh --filter "pyenv"
+      - name: Show bash version
+        run: bash --version
 
-      # Test commands
-      - run: ./runtest.sh test/test_commands.sh
+      - name: Test functions with pyenv
+        run: ./runtest.sh test/test_functions.sh --filter "pyenv"
+
+      - name: Test commands
+        run: ./runtest.sh test/test_commands.sh
 
   macos-homebrew:
     runs-on: macos-latest
@@ -43,13 +46,16 @@ jobs:
         with:
           submodules: recursive
 
-      # Test functions with homebrew
-      - run: ./runtest.sh test/test_functions.sh --filter "homebrew"
+      - name: Show bash version
+        run: bash --version
+
+      - name: Test functions with homebrew
+        run: ./runtest.sh test/test_functions.sh --filter "homebrew"
         env:
           BATS_MOCK_HOMEBREW: 0
 
-      # Test commands
-      - run: ./runtest.sh test/test_commands.sh
+      - name: Test commands
+        run: ./runtest.sh test/test_commands.sh
 
   macos-pyenv:
     runs-on: macos-latest
@@ -63,13 +69,16 @@ jobs:
         with:
           submodules: recursive
 
-      # Test functions with pyenv
-      - run: brew install pyenv
-      - run: pyenv install "${{ matrix.python }}"
+      - name: Install pyenv
+        run: brew install pyenv
 
-      - run: ./runtest.sh test/test_functions.sh --filter "pyenv"
+      - name: Install Python ${{ matrix.python }} with pyenv
+        run: pyenv install "${{ matrix.python }}"
+
+      - name: Test functions with pyenv
+        run: ./runtest.sh test/test_functions.sh --filter "pyenv"
         env:
           BATS_MOCK_PYENV: 0
 
-      # Test commands
-      - run: ./runtest.sh test/test_commands.sh
+      - name: Test commands
+        run: ./runtest.sh test/test_commands.sh
