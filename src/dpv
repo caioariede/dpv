@@ -1122,7 +1122,7 @@ dpv_internal_filter_python_versions() {
 		done
 
 	else
-		local skip
+		local skip=""
 
 		while IFS= read -r line; do
 			local major_version="$(dpv_format_major_version <<<"$line")"
