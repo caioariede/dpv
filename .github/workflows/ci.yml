@@ -31,7 +31,7 @@ jobs:
       # Test commands
       - run: ./runtest.sh test/test_commands.sh
 
-  macos:
+  macos-homebrew:
     runs-on: macos-latest
     strategy:
       matrix:
@@ -43,12 +43,27 @@ jobs:
         with:
           submodules: recursive
 
-      # Test functions with homebrew alone (pyenv is not installed at this point)
+      # Test functions with homebrew
       - run: ./runtest.sh test/test_functions.sh --filter "homebrew"
         env:
           BATS_MOCK_HOMEBREW: 0
 
-      # Test functions with pyenv (both homebrew and pyenv are installed at this point)
+      # Test commands
+      - run: ./runtest.sh test/test_commands.sh
+
+  macos-pyenv:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python:
+          - "3.9.10"
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      # Test functions with pyenv
       - run: brew install pyenv
       - run: pyenv install "${{ matrix.python }}"
 
