@@ -65,17 +65,50 @@ mock_virtualenvs_dir() {
 }
 
 mock_virtualenv() {
-	local venv_install_method="$1"
-	shift
-	local venv_python_version="$1"
-	shift
-	local project_path="$1"
-	shift
+	if [[ "${DPV_MOCK_VIRTUALENVS_DIR:-}" == "" ]]; then
+		mock_virtualenvs_dir
+	fi
+
+	local install_method
+	local python_version
+	local project_path
+	local activate=0
+	local opt_echo=0
+
+	while [[ "$#" -gt 0 ]]; do
+		case "$1" in
+		--install-method | --python-version | --project-path)
+			declare "$(echo "${1:2}" | tr '-' '_')"="$2"
+			shift
+			shift
+			;;
+		--activate)
+			activate=1
+			shift
+			;;
+		--echo)
+			opt_echo=1
+			shift
+			;;
+		*)
+			echo "invalid argument: $1"
+			exit
+			;;
+		esac
+	done
+
 	local venv_name="$(basename "$project_path")"
 
-	local venv_path="$DPV_MOCK_VIRTUALENVS_DIR/$venv_python_version/$venv_name"
-	mkdir -p "$DPV_MOCK_VIRTUALENVS_DIR/$venv_python_version/$venv_name"
-	printf "path = $project_path\nversion = $venv_python_version\ninstall_method = $venv_install_method\n" >"$venv_path/dpv.cfg"
+	local venv_path="$DPV_MOCK_VIRTUALENVS_DIR/$python_version/$venv_name"
+	mkdir -p "$DPV_MOCK_VIRTUALENVS_DIR/$python_version/$venv_name"
+	printf "path = $project_path\nversion = $python_version\ninstall_method = $install_method\n" >"$venv_path/dpv.cfg"
+
+	if [[ "$activate" -eq "1" ]]; then
+		export DPV_MOCK_VIRTUALENV_DIR="$venv_path"
+	fi
+	if [[ "$opt_echo" -eq "1" ]]; then
+		echo "$venv_path"
+	fi
 }
 
 #

@@ -213,11 +213,9 @@ test_dpv_internal_pipe_format_python_versions_all() { # @test
 }
 
 test_dpv_internal_parse_virtualenv_config_file() { # @test
-	mock_virtualenvs_dir
-
 	test_fn() {
 		local project_path="$(pwd)/venv-1"
-		mock_virtualenv "PYENV" "3.9.9" "$project_path"
+		mock_virtualenv --install-method "PYENV" --python-version "3.9.9" --project-path "$project_path"
 
 		virtualenv_dir="$(PWD="$project_path" dpv_internal_scan_virtualenv | dpv_kv_get "virtualenv_dir")"
 
@@ -534,12 +532,10 @@ test_dpv_internal_print_logs_with_logs() { # @test
 }
 
 test_dpv_internal_scan_virtualenv_match() { # @test
-	mock_virtualenvs_dir
+	local project_path="$(pwd)/venv-1"
+	mock_virtualenv --install-method "PYENV" --python-version "3.9.9" --project-path "$project_path"
 
 	test_fn() {
-		local project_path="$(pwd)/venv-1"
-		mock_virtualenv "PYENV" "3.9.9" "$project_path"
-
 		PWD="$project_path" dpv_internal_scan_virtualenv
 	}
 
@@ -552,11 +548,9 @@ test_dpv_internal_scan_virtualenv_match() { # @test
 }
 
 test_dpv_internal_scan_virtualenv_not_match() { # @test
-	mock_virtualenvs_dir
-
 	test_fn() {
 		local project_path="$(pwd)/venv-1"
-		mock_virtualenv "PYENV" "3.9.9" "$project_path"
+		mock_virtualenv --install-method "PYENV" --python-version "3.9.9" --project-path "$project_path"
 
 		PWD="$(pwd)/venv-2" dpv_internal_scan_virtualenv
 	}

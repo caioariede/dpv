@@ -104,15 +104,36 @@ test_dpv_cmd_versions_installed() { # @test
 	assert_output --partial "homebrew: 3.11.2*"
 }
 
-test_cmd_drop() { # @test
+test_cmd_drop_current_virtualenv() { # @test
+	test_fn() {
+		mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)/abc" --activate
+		dpv drop
+	}
+
+	run test_fn
+	assert_success
+
+	[ ! -d "$DPV_MOCK_VIRTUALENV_DIR" ]
+}
+
+test_cmd_drop_another_virtualenv() { # @test
+	mock_virtualenvs_dir
+
+	VENV_A=$(mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)/abc" --echo)
+	VENV_B=$(mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)/def" --echo)
+
+	run dpv drop def # delete VENV_B
+
+	assert_success
+
+	[ -d "$VENV_A" ]
+	[ ! -d "$VENV_B" ]
 }
 
 test_dpv_cmd_list() { # @test
 	test_fn() {
-		mock_virtualenvs_dir
-
-		mock_virtualenv "pyenv" "3.9.1" "$(pwd)/def"
-		mock_virtualenv "pyenv" "3.9.2" "$(pwd)/abc"
+		mock_virtualenv --install-method "pyenv" --python-version "3.9.1" --project-path "$(pwd)/def"
+		mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)/abc"
 
 		dpv list
 	}
@@ -134,11 +155,9 @@ test_dpv_cmd_info_not_activated() { # @test
 }
 
 test_dpv_cmd_info_activated() { # @test
-	mock_virtualenvs_dir
-
 	test_fn() {
 		local project_path="$(pwd)/venv-1"
-		mock_virtualenv "pyenv" "3.9.9" "$project_path"
+		mock_virtualenv --install-method "pyenv" --python-version "3.9.9" --project-path "$project_path"
 
 		export DPV_VIRTUALENV_DIR="$DPV_MOCK_VIRTUALENVS_DIR/3.9.9/venv-1"
 

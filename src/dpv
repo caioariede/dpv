@@ -99,7 +99,7 @@ INTERNAL_RESOLVE_INSTALL_METHOD="${DPV_MOCK_RESOLVE_INSTALL_METHOD:-ø}"
 INTERNAL_ARG_PYTHON_VERSION="${DPV_MOCK_ARG_PYTHON_VERSION:-ø}"
 INTERNAL_VIRTUALENV_INSTALL_METHOD="${DPV_MOCK_VIRTUALENV_INSTALL_METHOD:-ø}"
 INTERNAL_VIRTUALENV_PYTHON_VERSION="${DPV_MOCK_VIRTUALENV_PYTHON_VERSION:-ø}"
-INTERNAL_VIRTUALENV_DIR="${DPV_MOCK_VIRTUALENV_DIR:-ø}"
+INTERNAL_VIRTUALENV_DIR="${DPV_MOCK_VIRTUALENV_DIR:-${DPV_VIRTUALENV_DIR:-ø}}"
 
 #
 # Command functions
@@ -195,19 +195,28 @@ dpv_cmd_drop() {
 	echo "command: drop virtualenv"
 	echo
 
-	if dpv_check_is_set "$DPV_VIRTUALENV_DIR"; then
-		rm -rf "$DPV_VIRTUALENV_DIR"
-		echo "dropped"
+	if [[ "$#" -eq "0" ]]; then
+		if dpv_check_is_set "$INTERNAL_VIRTUALENV_DIR"; then
+			rm -rf "$INTERNAL_VIRTUALENV_DIR"
+			echo "dropped $INTERNAL_VIRTUALENV_DIR"
+			__dpv_exit_shell
+		else
+			echo "error: virtualenv not activated"
+			return
+		fi
 	else
-		echo "error: virtualenv not activated"
-		return
+		while IFS= read -r line; do
+			rm -rf "$line"
+			echo "dropped $line"
+		done < <(find "$CFG_VIRTUALENVS_DIR" -maxdepth 2 -mindepth 2 -name "$1")
 	fi
 }
 
 unsafe_dpv_cmd_internal_load_shell() {
-	dpv_check_is_set "$DPV_VIRTUALENV_DIR" || return
+	dpv_check_is_set "$INTERNAL_VIRTUALENV_DIR" || return
 
-	echo "source $DPV_VIRTUALENV_DIR/bin/activate || exit $ERR_CANNOT_ACTIVATE_VIRTUALENV"
+	echo "__dpv_exit_shell() { exit }"
+	echo "source $INTERNAL_VIRTUALENV_DIR/bin/activate || exit $ERR_CANNOT_ACTIVATE_VIRTUALENV"
 }
 
 dpv_cmd_list() {
@@ -233,7 +242,7 @@ dpv_cmd_info() {
 
 	dpv_internal_print_status
 
-	if dpv_check_is_set "$DPV_VIRTUALENV_DIR"; then
+	if dpv_check_is_set "$INTERNAL_VIRTUALENV_DIR"; then
 		dpv_internal_print_current_virtualenv
 		printf "\n"
 	fi
@@ -243,7 +252,7 @@ dpv_cmd_info() {
 }
 
 unsafe_dpv_cmd_run_wrapper() {
-	if dpv_check_is_set "$DPV_VIRTUALENV_DIR"; then
+	if dpv_check_is_set "$INTERNAL_VIRTUALENV_DIR"; then
 		dpv_cmd_info | dpv_pipe_format_theme
 	else
 		unsafe_dpv_cmd_run $*
@@ -307,7 +316,7 @@ dpv_internal_print_shell_banner() {
 }
 
 dpv_internal_print_status() {
-	if dpv_check_is_set "$DPV_VIRTUALENV_DIR"; then
+	if dpv_check_is_set "$INTERNAL_VIRTUALENV_DIR"; then
 		printf "status: activated\n\n"
 	else
 		printf "status: not activated\n\n"
@@ -325,10 +334,10 @@ dpv_internal_print_config() {
 }
 
 dpv_internal_print_current_virtualenv() {
-	IFS=$'\n' read -d '' -r path version install_method <<<"$(dpv_internal_parse_virtualenv_config_file "$DPV_VIRTUALENV_DIR/dpv.cfg" | dpv_kv_get "path" "version" "install_method")" || true
+	IFS=$'\n' read -d '' -r path version install_method <<<"$(dpv_internal_parse_virtualenv_config_file "$INTERNAL_VIRTUALENV_DIR/dpv.cfg" | dpv_kv_get "path" "version" "install_method")" || true
 
 	printf "current virtualenv:\n"
-	printf "  virtualenv path: $DPV_VIRTUALENV_DIR\n"
+	printf "  virtualenv path: $INTERNAL_VIRTUALENV_DIR\n"
 	printf "  project path: $path\n"
 	printf "  python version: $version\n"
 	printf "  installation method: $install_method\n"
@@ -683,9 +692,6 @@ dpv_internal_parse_virtualenv_config_file() {
 #
 
 dpv_main() {
-	# VARS: External/Overridable
-	DPV_VIRTUALENV_DIR="${DPV_VIRTUALENV_DIR:-ø}"
-
 	CMD=""
 	CMD_ARGS=""
 
@@ -769,7 +775,7 @@ dpv_main() {
 		;;
 
 	drop | rm)
-		dpv_cmd_drop
+		dpv_cmd_drop "$CMD_ARGS" | dpv_pipe_format_theme
 		;;
 
 	help | --help | -h)
