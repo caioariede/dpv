@@ -117,6 +117,11 @@ test_dpv_string_regex_replace() { # @test
 	assert_output "barfoo"
 }
 
+test_dpv_kv_print() { # @test
+	run dpv_kv_print "foo" "testing" "123"
+	assert_output "foo = testing 123"
+}
+
 test_dpv_kv_parse_key() { # @test
 	test_fn() {
 		dpv_kv_parse_key "foo = bar = baz"
@@ -131,6 +136,29 @@ test_dpv_kv_parse_val() { # @test
 	}
 	run test_fn
 	assert_output "bar = baz"
+}
+
+test_dpv_kv_get_single() { # @test
+	test_fn() {
+		dpv_kv_print "foo" "1"
+		dpv_kv_print "bar" "2"
+	}
+	output=$(test_fn)
+
+	[[ "$(echo "$output" | dpv_kv_get "foo")" == "1" ]]
+	[[ "$(echo "$output" | dpv_kv_get "bar")" == "2" ]]
+}
+
+test_dpv_kv_get_multiple() { # @test
+	test_fn() {
+		(
+			dpv_kv_print "foo" "1 2"
+			dpv_kv_print "bar" "2 1"
+		) | dpv_kv_get "bar" "foo"
+	}
+	run test_fn
+	assert_line --index 0 "2 1"
+	assert_line --index 1 "1 2"
 }
 
 #
@@ -191,9 +219,9 @@ test_dpv_internal_parse_virtualenv_config_file() { # @test
 		local project_path="$(pwd)/venv-1"
 		mock_virtualenv "PYENV" "3.9.9" "$project_path"
 
-		PWD="$project_path" dpv_internal_scan_virtualenv
+		virtualenv_dir="$(PWD="$project_path" dpv_internal_scan_virtualenv | dpv_kv_get "virtualenv_dir")"
 
-		dpv_internal_parse_virtualenv_config_file "$INTERNAL_VIRTUALENV_DIR/dpv.cfg"
+		dpv_internal_parse_virtualenv_config_file "$virtualenv_dir/dpv.cfg"
 	}
 
 	run test_fn
@@ -493,7 +521,7 @@ test_dpv_internal_run_command_log_failure_success() { # @test
 
 test_dpv_internal_print_logs_no_logs() { # @test
 	run dpv_internal_print_logs
-	assert_output --partial "no logs"
+	assert_output ""
 }
 
 test_dpv_internal_print_logs_with_logs() { # @test
@@ -513,17 +541,14 @@ test_dpv_internal_scan_virtualenv_match() { # @test
 		mock_virtualenv "PYENV" "3.9.9" "$project_path"
 
 		PWD="$project_path" dpv_internal_scan_virtualenv
-
-		echo "$INTERNAL_VIRTUALENV_PYTHON_VERSION"
-		echo "$INTERNAL_VIRTUALENV_INSTALL_METHOD"
-		echo "$INTERNAL_VIRTUALENV_DIR"
 	}
 
 	run test_fn
 	assert_success
-	assert_line --index 0 "3.9.9"
-	assert_line --index 1 "PYENV"
-	assert_line --index 2 "$CFG_VIRTUALENVS_DIR/3.9.9/venv-1"
+	assert_line --index 0 "virtualenv_dir = $CFG_VIRTUALENVS_DIR/3.9.9/venv-1"
+	assert_line --index 1 "project_path = $(pwd)/venv-1"
+	assert_line --index 2 "version = 3.9.9"
+	assert_line --index 3 "install_method = PYENV"
 }
 
 test_dpv_internal_scan_virtualenv_not_match() { # @test
@@ -539,12 +564,10 @@ test_dpv_internal_scan_virtualenv_not_match() { # @test
 	refute test_fn
 }
 
-test_unsafe_dpv_internal_scan_python_version_success_runtime_txt() { # @test
+test_dpv_internal_scan_python_version_success_runtime_txt() { # @test
 	test_fn() {
 		echo "python-3.9.1" >>runtime.txt
-		unsafe_dpv_internal_scan_python_version
-		echo "$INTERNAL_SCAN_PYTHON_VERSION"
-		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+		dpv_internal_scan_python_version | dpv_kv_get "version" "source"
 	}
 	run test_fn
 	assert_success
@@ -552,12 +575,10 @@ test_unsafe_dpv_internal_scan_python_version_success_runtime_txt() { # @test
 	assert_line --index 1 "runtime.txt"
 }
 
-test_unsafe_dpv_internal_scan_python_version_success_pyproject_toml_single_quote() { # @test
+test_dpv_internal_scan_python_version_success_pyproject_toml_single_quote() { # @test
 	test_fn() {
 		echo "python = '3.9.1'" >>pyproject.toml
-		unsafe_dpv_internal_scan_python_version
-		echo "$INTERNAL_SCAN_PYTHON_VERSION"
-		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+		dpv_internal_scan_python_version | dpv_kv_get "version" "source"
 	}
 	run test_fn
 	assert_success
@@ -565,12 +586,10 @@ test_unsafe_dpv_internal_scan_python_version_success_pyproject_toml_single_quote
 	assert_line --index 1 "pyproject.toml"
 }
 
-test_unsafe_dpv_internal_scan_python_version_success_pyproject_toml_double_quote() { # @test
+test_dpv_internal_scan_python_version_success_pyproject_toml_double_quote() { # @test
 	test_fn() {
 		echo 'python = "3.9.1"' >>pyproject.toml
-		unsafe_dpv_internal_scan_python_version
-		echo "$INTERNAL_SCAN_PYTHON_VERSION"
-		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+		dpv_internal_scan_python_version | dpv_kv_get "version" "source"
 	}
 	run test_fn
 	assert_success
@@ -578,14 +597,12 @@ test_unsafe_dpv_internal_scan_python_version_success_pyproject_toml_double_quote
 	assert_line --index 1 "pyproject.toml"
 }
 
-test_unsafe_dpv_internal_scan_python_version_success_any_installed_version_PYENV() { # @test
+test_dpv_internal_scan_python_version_success_any_installed_version_PYENV() { # @test
 	test_fn() {
 		mock_available_install_methods "PYENV"
 		mock_installed_python_versions "PYENV" "3.9.2"
 
-		unsafe_dpv_internal_scan_python_version
-		echo "$INTERNAL_SCAN_PYTHON_VERSION"
-		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+		dpv_internal_scan_python_version | dpv_kv_get "version" "source"
 	}
 	run test_fn
 	assert_success
@@ -593,14 +610,12 @@ test_unsafe_dpv_internal_scan_python_version_success_any_installed_version_PYENV
 	assert_line --index 1 --partial "pyenv"
 }
 
-test_unsafe_dpv_internal_scan_python_version_success_any_installed_version_HOMEBREW() { # @test
+test_dpv_internal_scan_python_version_success_any_installed_version_HOMEBREW() { # @test
 	test_fn() {
 		mock_available_install_methods "HOMEBREW"
 		mock_installed_python_versions "HOMEBREW" "3.9.3"
 
-		unsafe_dpv_internal_scan_python_version
-		echo "$INTERNAL_SCAN_PYTHON_VERSION"
-		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+		dpv_internal_scan_python_version | dpv_kv_get "version" "source"
 	}
 	run test_fn
 	assert_success
@@ -608,15 +623,13 @@ test_unsafe_dpv_internal_scan_python_version_success_any_installed_version_HOMEB
 	assert_line --index 1 --partial "homebrew"
 }
 
-test_unsafe_dpv_internal_scan_python_version_success_any_available_version_PYENV() { # @test
+test_dpv_internal_scan_python_version_success_any_available_version_PYENV() { # @test
 	test_fn() {
 		mock_available_install_methods "PYENV"
 		mock_installed_python_versions "PYENV" ""
 		mock_available_python_versions "PYENV" "3.9.2"
 
-		unsafe_dpv_internal_scan_python_version
-		echo "$INTERNAL_SCAN_PYTHON_VERSION"
-		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+		dpv_internal_scan_python_version | dpv_kv_get "version" "source"
 	}
 	run test_fn
 	assert_success
@@ -624,15 +637,13 @@ test_unsafe_dpv_internal_scan_python_version_success_any_available_version_PYENV
 	assert_line --index 1 --partial "pyenv"
 }
 
-test_unsafe_dpv_internal_scan_python_version_success_any_available_version_HOMEBREW() { # @test
+test_dpv_internal_scan_python_version_success_any_available_version_HOMEBREW() { # @test
 	test_fn() {
 		mock_available_install_methods "HOMEBREW"
 		mock_installed_python_versions "HOMEBREW" ""
 		mock_available_python_versions "HOMEBREW" "3.9.3"
 
-		unsafe_dpv_internal_scan_python_version
-		echo "$INTERNAL_SCAN_PYTHON_VERSION"
-		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+		dpv_internal_scan_python_version | dpv_kv_get "version" "source"
 	}
 	run test_fn
 	assert_success
@@ -640,7 +651,7 @@ test_unsafe_dpv_internal_scan_python_version_success_any_available_version_HOMEB
 	assert_line --index 1 --partial "homebrew"
 }
 
-test_unsafe_dpv_internal_scan_python_version_failure_no_available_python_versions() { # @test
+test_dpv_internal_scan_python_version_failure_no_available_python_versions() { # @test
 	test_fn() {
 		mock_available_install_methods "PYENV HOMEBREW"
 		mock_installed_python_versions "HOMEBREW" ""
@@ -648,22 +659,19 @@ test_unsafe_dpv_internal_scan_python_version_failure_no_available_python_version
 		mock_installed_python_versions "PYENV" ""
 		mock_available_python_versions "PYENV" ""
 
-		unsafe_dpv_internal_scan_python_version
-		echo "$INTERNAL_SCAN_PYTHON_VERSION"
-		echo "$INTERNAL_SCAN_PYTHON_VERSION_SOURCE"
+		dpv_internal_scan_python_version
 	}
 	run test_fn
-	assert_failure "$ERR_CANNOT_DETERMINE_PYTHON_VERSION"
+	assert_failure
+	assert_output ""
 }
 
-test_unsafe_dpv_internal_resolve_python_version_match_installed() { # @test
+test_dpv_internal_resolve_python_version_match_installed() { # @test
 	test_fn() {
 		mock_available_install_methods "PYENV"
 		mock_installed_python_versions "PYENV" "3.9.4"
 
-		unsafe_dpv_internal_resolve_python_version "3.9"
-		echo "$INTERNAL_RESOLVE_PYTHON_VERSION"
-		echo "$INTERNAL_RESOLVE_INSTALL_METHOD"
+		dpv_internal_resolve_python_version "3.9" | dpv_kv_get "version" "install_method"
 	}
 
 	run test_fn
@@ -672,15 +680,13 @@ test_unsafe_dpv_internal_resolve_python_version_match_installed() { # @test
 	assert_line --index 1 "PYENV"
 }
 
-test_unsafe_dpv_internal_resolve_python_version_match_available() { # @test
+test_dpv_internal_resolve_python_version_match_available() { # @test
 	test_fn() {
 		mock_available_install_methods "PYENV"
 		mock_installed_python_versions "PYENV" ""
 		mock_available_python_versions "PYENV" "3.9.4"
 
-		unsafe_dpv_internal_resolve_python_version "3.9"
-		echo "$INTERNAL_RESOLVE_PYTHON_VERSION"
-		echo "$INTERNAL_RESOLVE_INSTALL_METHOD"
+		dpv_internal_resolve_python_version "3.9" | dpv_kv_get "version" "install_method"
 	}
 
 	run test_fn
@@ -690,17 +696,17 @@ test_unsafe_dpv_internal_resolve_python_version_match_available() { # @test
 	assert_log_output --partial "needs to be installed"
 }
 
-test_unsafe_dpv_internal_resolve_python_version_not_match() { # @test
+test_dpv_internal_resolve_python_version_not_match() { # @test
 	test_fn() {
 		mock_available_install_methods "PYENV"
 		mock_installed_python_versions "PYENV" ""
 		mock_available_python_versions "PYENV" "3.8.1"
 
-		unsafe_dpv_internal_resolve_python_version "3.9"
+		dpv_internal_resolve_python_version "3.9"
 	}
 
 	run test_fn
-	assert_failure "$ERR_CANNOT_RESOLVE_PYTHON_VERSION"
+	assert_failure
 }
 
 test_unsafe_dpv_internal_create_virtualenv_success() { # @test
