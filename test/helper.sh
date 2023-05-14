@@ -24,7 +24,7 @@ mock_log_file() {
 }
 
 mock_virtualenv_python_version() {
-	INTERNAL_VIRTUALENV_PYTHON_VERSION="$1"
+	INTERNAL_INITIALIZE_VIRTUALENV_python_version="$1"
 
 	# for command tests:
 	export DPV_MOCK_VIRTUALENV_PYTHON_VERSION="$1"
@@ -37,7 +37,7 @@ mock_available_install_methods() {
 	export DPV_MOCK_AVAILABLE_INSTALL_METHODS="$@"
 }
 
-mock_installed_python_versions() {
+mock_internal_installed_python_versions() {
 	local install="$1"
 	shift
 	local versions=$(echo $@ | tr " " "\n")
@@ -47,7 +47,7 @@ mock_installed_python_versions() {
 	eval "$mock_var='$versions'"
 }
 
-mock_available_python_versions() {
+mock_internal_available_python_versions() {
 	local install="$1"
 	shift
 	local versions=$(echo $@ | tr " " "\n")

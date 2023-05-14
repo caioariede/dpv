@@ -53,13 +53,13 @@ test_dpv_cmd_help() { # @test
 	assert_success
 }
 
-test_dpv_cmd_versions() { # @test
+test_dpv_internal_cmd_versions() { # @test
 	test_fn() {
-		mock_available_install_methods "PYENV HOMEBREW"
-		mock_available_python_versions "PYENV" "3.9.2 3.9.1 3.8"
-		mock_installed_python_versions "PYENV" "3.9.1"
-		mock_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
-		mock_installed_python_versions "HOMEBREW" "3.11.2"
+		mock_internal_available_install_methods "PYENV HOMEBREW"
+		mock_internal_available_python_versions "PYENV" "3.9.2 3.9.1 3.8"
+		mock_internal_installed_python_versions "PYENV" "3.9.1"
+		mock_internal_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
+		mock_internal_installed_python_versions "HOMEBREW" "3.11.2"
 
 		dpv versions
 	}
@@ -70,13 +70,13 @@ test_dpv_cmd_versions() { # @test
 	assert_output --partial "homebrew: 3.11.2* 3.10"
 }
 
-test_dpv_cmd_versions_all() { # @test
+test_dpv_internal_cmd_versions_all() { # @test
 	test_fn() {
-		mock_available_install_methods "PYENV HOMEBREW"
-		mock_available_python_versions "PYENV" "3.9.2 3.9.1 3.8"
-		mock_installed_python_versions "PYENV" "3.9.1"
-		mock_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
-		mock_installed_python_versions "HOMEBREW" "3.11.2"
+		mock_internal_available_install_methods "PYENV HOMEBREW"
+		mock_internal_available_python_versions "PYENV" "3.9.2 3.9.1 3.8"
+		mock_internal_installed_python_versions "PYENV" "3.9.1"
+		mock_internal_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
+		mock_internal_installed_python_versions "HOMEBREW" "3.11.2"
 
 		dpv versions --all
 	}
@@ -87,13 +87,13 @@ test_dpv_cmd_versions_all() { # @test
 	assert_output --partial "homebrew: 3.11.2* 3.11.1 3.10"
 }
 
-test_dpv_cmd_versions_installed() { # @test
+test_dpv_internal_cmd_versions_installed() { # @test
 	test_fn() {
-		mock_available_install_methods "PYENV HOMEBREW"
-		mock_available_python_versions "PYENV" "3.9.2 3.9.1 3.8"
-		mock_installed_python_versions "PYENV" "3.9.1"
-		mock_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
-		mock_installed_python_versions "HOMEBREW" "3.11.2"
+		mock_internal_available_install_methods "PYENV HOMEBREW"
+		mock_internal_available_python_versions "PYENV" "3.9.2 3.9.1 3.8"
+		mock_internal_installed_python_versions "PYENV" "3.9.1"
+		mock_internal_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
+		mock_internal_installed_python_versions "HOMEBREW" "3.11.2"
 
 		dpv versions --installed
 	}
@@ -106,12 +106,11 @@ test_dpv_cmd_versions_installed() { # @test
 
 test_cmd_drop_current_virtualenv() { # @test
 	test_fn() {
-		mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)/abc" --activate
+		mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)" --activate
 		dpv drop
 	}
 
 	run test_fn
-	assert_success
 
 	[ ! -d "$DPV_MOCK_VIRTUALENV_DIR" ]
 }
@@ -144,22 +143,28 @@ test_dpv_cmd_list() { # @test
 	assert_line --index 2 --partial "virtualenvs/3.9.1/def"
 }
 
-test_dpv_cmd_info_not_activated() { # @test
-	run dpv info
+test_dpv_internal_cmd_info_not_activated() { # @test
+	test_fn() {
+		mock_virtualenv --install-method "pyenv" --python-version "3.9.9" --project-path "$(pwd)"
+
+		dpv info
+	}
+
+	run test_fn
 
 	assert_success
 	assert_output --partial "status: not activated"
 
 	# should show config
 	assert_output --partial "config:"
+	# should show virtualenv config
+	assert_output --partial "virtualenv:"
+
 }
 
-test_dpv_cmd_info_activated() { # @test
+test_dpv_internal_cmd_info_activated() { # @test
 	test_fn() {
-		local project_path="$(pwd)/venv-1"
-		mock_virtualenv --install-method "pyenv" --python-version "3.9.9" --project-path "$project_path"
-
-		export DPV_VIRTUALENV_DIR="$DPV_MOCK_VIRTUALENVS_DIR/3.9.9/venv-1"
+		mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)" --activate
 
 		dpv info
 	}

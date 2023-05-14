@@ -44,9 +44,11 @@ SED_SCRIPT=$'
 
 }
 
-/^current virtualenv:/ {
+/^virtualenv:/ {
     :venvblock
     n
+    s/  status: (not activated)/  status: \e[0;33m\\1\e[0m/
+    s/  status: (activated)/  status: \e[0;32m\\1\e[0m/
     s/^( +)([^:]+):(.*)/\\1\e[38;5;81m\\2\e[0m:\e[38;5;249m\\3\e[0m/g
     t venvblock
 }
