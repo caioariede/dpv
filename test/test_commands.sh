@@ -60,6 +60,7 @@ test_dpv_internal_cmd_versions() { # @test
 		mock_internal_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
 		mock_internal_installed_python_versions "HOMEBREW" "3.11.2"
 
+        set -x
 		dpv versions
 	}
 
