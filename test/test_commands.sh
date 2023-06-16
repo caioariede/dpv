@@ -55,7 +55,6 @@ test_dpv_cmd_help() { # @test
 
 test_dpv_internal_cmd_versions() { # @test
 	test_fn() {
-		mock_internal_available_install_methods "PYENV HOMEBREW"
 		mock_internal_available_python_versions "PYENV" "3.9.2 3.9.1 3.8"
 		mock_internal_installed_python_versions "PYENV" "3.9.1"
 		mock_internal_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
@@ -72,7 +71,6 @@ test_dpv_internal_cmd_versions() { # @test
 
 test_dpv_internal_cmd_versions_all() { # @test
 	test_fn() {
-		mock_internal_available_install_methods "PYENV HOMEBREW"
 		mock_internal_available_python_versions "PYENV" "3.9.2 3.9.1 3.8"
 		mock_internal_installed_python_versions "PYENV" "3.9.1"
 		mock_internal_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
@@ -89,7 +87,6 @@ test_dpv_internal_cmd_versions_all() { # @test
 
 test_dpv_internal_cmd_versions_installed() { # @test
 	test_fn() {
-		mock_internal_available_install_methods "PYENV HOMEBREW"
 		mock_internal_available_python_versions "PYENV" "3.9.2 3.9.1 3.8"
 		mock_internal_installed_python_versions "PYENV" "3.9.1"
 		mock_internal_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
