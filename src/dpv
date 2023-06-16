@@ -142,11 +142,6 @@ dpv_cmd_help() {
 }
 
 dpv_internal_cmd_versions() {
-    echo "DEBUG: 1"
-	trap 'dpv_internal_error_handling $?' EXIT
-    echo "DEBUG: 2"
-    echo "DEBUG CASE: $1"
-
 	case "${1:-}" in
 	--installed)
 		echo "command: installed python versions"
@@ -833,7 +828,12 @@ EOF
 		CFG_PREFERRED_INSTALL_METHODS="HOMEBREW"
 	fi
 
+    echo "DEBUG CMD: $CMD"
+    echo "DEBUG CMD_ARGS: $CMD_ARGS"
+    echo "DEBUG: FOO"
+
 	dpv_internal_set_log_file
+    echo "DEBUG: BAR"
 
 	case "$CMD" in
 	internal-load-shell)
