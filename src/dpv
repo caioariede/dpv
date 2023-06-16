@@ -142,7 +142,10 @@ dpv_cmd_help() {
 }
 
 dpv_internal_cmd_versions() {
+    echo "DEBUG: 1"
 	trap 'dpv_internal_error_handling $?' EXIT
+    echo "DEBUG: 2"
+    echo "DEBUG CASE: $1"
 
 	case "${1:-}" in
 	--installed)
