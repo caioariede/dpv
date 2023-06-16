@@ -66,6 +66,8 @@ test_dpv_internal_cmd_versions() { # @test
 
 	run test_fn
 
+    assert_output ""
+    assert_success
 	assert_output --partial "pyenv: 3.9.1* 3.8"
 	assert_output --partial "homebrew: 3.11.2* 3.10"
 }
