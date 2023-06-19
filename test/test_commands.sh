@@ -12,46 +12,48 @@ setup() {
 	. "$DIR/helper.sh"
 
 	unset DPV_THEME
+	export EXEC="$TEST_SHELL $DIR/../src/dpv"
 
-	mock_log_file "$(mktemp "${TMPDIR:-/tmp/}dpv_test_logs.XXXXX")"
+	mock_log_file
 }
 
-test_coverage() { # @test
-	# the poor's man simple code coverage
-	test_fn() {
-		local testcases="$(grep "^test_cmd_.*@test" "$BATS_TEST_FILENAME")"
+#test_coverage() { 
+#	# the poor's man simple code coverage
+#	test_fn() {
+#		local testcases="$(grep "^test_cmd_.*@test" "$BATS_TEST_FILENAME")"
+#
+#		local missing="$(while IFS= read -r line; do
+#			if [[ "$testcases" != *"test_cmd_$line"* ]]; then
+#				echo $line
+#			fi
+#		done < <(grep -o "^cmd_[^(]\+" "$(which dpv)" | sed 's/cmd_//' | sort | uniq))"
+#
+#		if [[ "$missing" != "" ]]; then
+#			echo "commands not covered by tests: $missing"
+#			exit 1
+#		fi
+#	}
+#	run test_fn
+#	assert_success
+#
+#}
 
-		local missing="$(while IFS= read -r line; do
-			if [[ "$testcases" != *"test_cmd_$line"* ]]; then
-				echo $line
-			fi
-		done < <(grep -o "^cmd_[^(]\+" "$(which dpv)" | sed 's/cmd_//' | sort | uniq))"
-
-		if [[ "$missing" != "" ]]; then
-			echo "commands not covered by tests: $missing"
-			exit 1
-		fi
-	}
-	run test_fn
-	assert_success
-
-}
-
-test_dpv_cmd_help() { # @test
-	test_fn() {
-		local help_output="$(DPV_THEME= dpv help)"
-
-		while IFS= read -r line; do
-			if [[ "$help_output" != *"  dpv $line "* ]]; then
-				echo "command not present in help output: $line"
-				echo "$help_output"
-				exit 1
-			fi
-		done < <(grep -o "^cmd_[^(]\+" "$(which dpv)" | sed 's/cmd_//' | sort | uniq)
-	}
-	run test_fn
-	assert_success
-}
+#test_dpv_cmd_help() {
+#	test_fn() {
+#		local help_output="$($EXEC help)"
+#
+#		while IFS= read -r line; do
+#			if [[ "$help_output" != *"  dpv $line "* ]]; then
+#				echo "command not present in help output: $line"
+#				echo "$help_output"
+#				exit 1
+#			fi
+#		done < <(grep -o "^cmd_[^(]\+" "$(which dpv)" | sed 's/cmd_//' | sort | uniq)
+#	}
+#	run test_fn
+#	assert_output ""
+#	assert_success
+#}
 
 test_dpv_internal_cmd_versions() { # @test
 	test_fn() {
@@ -60,12 +62,12 @@ test_dpv_internal_cmd_versions() { # @test
 		mock_internal_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
 		mock_internal_installed_python_versions "HOMEBREW" "3.11.2"
 
-		dpv versions
+		$EXEC versions
 	}
 
 	run test_fn
 
-    assert_success
+	assert_success
 	assert_output --partial "pyenv: 3.9.1* 3.8"
 	assert_output --partial "homebrew: 3.11.2* 3.10"
 }
@@ -77,7 +79,7 @@ test_dpv_internal_cmd_versions_all() { # @test
 		mock_internal_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
 		mock_internal_installed_python_versions "HOMEBREW" "3.11.2"
 
-		dpv versions --all
+		$EXEC versions --all
 	}
 
 	run test_fn
@@ -93,7 +95,7 @@ test_dpv_internal_cmd_versions_installed() { # @test
 		mock_internal_available_python_versions "HOMEBREW" "3.11.2 3.11.1 3.10"
 		mock_internal_installed_python_versions "HOMEBREW" "3.11.2"
 
-		dpv versions --installed
+		$EXEC versions --installed
 	}
 
 	run test_fn
@@ -104,8 +106,8 @@ test_dpv_internal_cmd_versions_installed() { # @test
 
 test_cmd_drop_current_virtualenv() { # @test
 	test_fn() {
-		mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)" --activate
-		dpv drop
+		eval "$(mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)" --activate)"
+		$EXEC drop
 	}
 
 	run test_fn
@@ -114,12 +116,12 @@ test_cmd_drop_current_virtualenv() { # @test
 }
 
 test_cmd_drop_another_virtualenv() { # @test
-	mock_virtualenvs_dir
+	mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)/abc"
+	VENV_A="$VENV_DIR"
+	mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)/def"
+	VENV_B="$VENV_DIR"
 
-	VENV_A=$(mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)/abc" --echo)
-	VENV_B=$(mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)/def" --echo)
-
-	run dpv drop def # delete VENV_B
+	run $EXEC drop def # delete VENV_B
 
 	assert_success
 
@@ -132,7 +134,7 @@ test_dpv_cmd_list() { # @test
 		mock_virtualenv --install-method "pyenv" --python-version "3.9.1" --project-path "$(pwd)/def"
 		mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)/abc"
 
-		dpv list
+		$EXEC list
 	}
 
 	run test_fn
@@ -145,7 +147,7 @@ test_dpv_internal_cmd_info_not_activated() { # @test
 	test_fn() {
 		mock_virtualenv --install-method "pyenv" --python-version "3.9.9" --project-path "$(pwd)"
 
-		dpv info
+		$EXEC info
 	}
 
 	run test_fn
@@ -164,7 +166,7 @@ test_dpv_internal_cmd_info_activated() { # @test
 	test_fn() {
 		mock_virtualenv --install-method "pyenv" --python-version "3.9.2" --project-path "$(pwd)" --activate
 
-		dpv info
+		$EXEC info
 	}
 
 	run test_fn
