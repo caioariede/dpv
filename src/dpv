@@ -828,12 +828,7 @@ EOF
 		CFG_PREFERRED_INSTALL_METHODS="HOMEBREW"
 	fi
 
-    echo "DEBUG CMD: $CMD"
-    echo "DEBUG CMD_ARGS: $CMD_ARGS"
-    echo "DEBUG: FOO"
-
 	dpv_internal_set_log_file
-    echo "DEBUG: BAR"
 
 	case "$CMD" in
 	internal-load-shell)
@@ -1405,4 +1400,4 @@ EOF
 }
 
 # https://stackoverflow.com/a/28776166
-(return 0 2>/dev/null) || dpv_internal_main "$@"
+dpv_internal_main "$@"
