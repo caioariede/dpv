@@ -1,4 +1,4 @@
-**the d̲ead simple P̲ython v̲irtualenv manager** *for the stoic programmer 🪚*  
+**the d̲ead simple P̲ython v̲irtualenv manager** 🪚
 
 [![CI](https://github.com/caioariede/dpv/actions/workflows/ci.yml/badge.svg)](https://github.com/caioariede/dpv/actions/workflows/ci.yml)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/caioariede/dpv)
@@ -50,7 +50,7 @@ bash -c 'curl -fsSLo $1 https://raw.githubusercontent.com/caioariede/dpv/HEAD/sr
 2. **Configure** — Add the following line to your .bashrc, .zshrc, etc
 
 ```bash
-eval "$(dpv internal-instrument)"
+eval "$(dpv internal-load-shell)"
 ```
 
 3. **Try it**
@@ -80,7 +80,7 @@ _Feel free to submit your own theme with a PR. Unfortunately right now there's n
 ## Command Comparison
 
 | command                                     | dpv          | poetry                   |
-| --                                          | --           | --                       |
+| ------------------------------------------- | ------------ | ------------------------ |
 | initialize virtualenv                       | dpv          | poetry install           |
 | initialize virtualenv with specific version | dpv 3.9.16   | poetry env use 3.9.16    |
 | initialize temporary virtualenv             | dpv --temp   |                          |
@@ -95,8 +95,8 @@ _Feel free to submit your own theme with a PR. Unfortunately right now there's n
 
 #### Context
 
-* A specific Python version is specified (pyproject.toml, runtime.txt)
-* homebrew & pyenv are both installed
+- A specific Python version is specified (pyproject.toml, runtime.txt)
+- homebrew & pyenv are both installed
 
 #### dpv
 
@@ -154,4 +154,3 @@ Trying to find and use a compatible version.
 
 Poetry was unable to find a compatible version. If you have one, you can explicitly use it via the "env use" command.
 ```
-
