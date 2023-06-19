@@ -1399,5 +1399,4 @@ $string
 EOF
 }
 
-# https://stackoverflow.com/a/28776166
-(return 0 2>/dev/null) || dpv_internal_main "$@"
+[ "${DPV_MOCK_SOURCE-}" ] || dpv_internal_main "$@"

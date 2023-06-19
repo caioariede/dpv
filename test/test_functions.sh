@@ -10,6 +10,8 @@ setup() {
 
 	# shellcheck source=./helper.sh
 	. "$DIR/helper.sh"
+
+	export DPV_MOCK_SOURCE=1
 	. dpv
 
 	mock_log_file "$(mktemp "${TMPDIR:-/tmp/}dpv_test_logs.XXXXX")"
