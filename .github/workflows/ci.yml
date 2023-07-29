@@ -10,23 +10,35 @@ on:
   workflow_dispatch:
 
 jobs:
-  ubuntu:
+  ubuntu-pyenv:
     runs-on: ubuntu-latest
+    continue-on-error: true
     strategy:
+      fail-fast: false
       matrix:
-        python:
-          - "3.9.10"
+        include:
+          - { test_shell: "ash" }
+          - { test_shell: "bash" }
+          - { test_shell: "dash" }
+          - { test_shell: "ksh" }
+          - { test_shell: "zsh" }
 
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      - uses: gabrielfalcao/pyenv-action@v9
-        with:
-          default: "${{ matrix.python }}"
 
-      - name: Show bash version
-        run: bash --version
+      - name: Install shell
+        run: sudo apt-get install "${{ matrix.test_shell }}"
+
+      - name: Choose shell
+        run: |
+          echo 'TEST_SHELL=${{ matrix.test_shell }}' >> $GITHUB_ENV
+          command -v ${{ matrix.test_shell }}
+
+      - uses: gabrielfalcao/pyenv-action@v14
+        with:
+          default: "3.9.10"
 
       - name: Test functions with pyenv
         run: ./runtest.sh test/test_functions.sh --filter "PYENV"
@@ -45,9 +57,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-
-      - name: Show bash version
-        run: bash --version
 
       - name: Test functions with homebrew
         run: ./runtest.sh test/test_functions.sh --filter "HOMEBREW"

@@ -1,26 +1,21 @@
-# make executables in src/ visible to PATH
-PATH="$DIR/../src:$PATH"
-
-DPV_DIR="$BATS_TEST_TMPDIR/test_dpv"
-PRJ_DIR="$BATS_TEST_TMPDIR/test_dpv_proj"
+DPV_DIR="$BATS_TEST_TMPDIR/.dpv"
 export DPV_DIR
-export PRJ_DIR
 
 rm -rf "$DPV_DIR"
-rm -rf "$PRJ_DIR"
 mkdir -p "$DPV_DIR"
-mkdir -p "$PRJ_DIR"
 
-cd "$PRJ_DIR" || exit
+DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" >/dev/null 2>&1 && pwd)"
+
+mkdir -p "$BATS_TEST_TMPDIR/myproject"
+cd "$BATS_TEST_TMPDIR/myproject" || exit
 
 #
 # mocks
 #
-mock_log_file() {
-	INTERNAL_LOG_FILE="$1"
+MOCK_LOG_FILE="$(mktemp "${TMPDIR:-/tmp/}dpv_test_logs.XXXXX")"
 
-	# for command tests:
-	export DPV_MOCK_LOG_FILE="$1"
+mock_log_file() {
+	export DPV_MOCK_LOG_FILE="$MOCK_LOG_FILE"
 }
 
 mock_virtualenv_python_version() {
@@ -31,19 +26,15 @@ mock_virtualenv_python_version() {
 }
 
 mock_available_install_methods() {
-	INTERNAL_AVAILABLE_INSTALL_METHODS="$@"
-
-	# for command tests:
 	export DPV_MOCK_AVAILABLE_INSTALL_METHODS="$@"
+	INTERNAL_AVAILABLE_INSTALL_METHODS="$@"
 }
 
 mock_internal_installed_python_versions() {
 	local install="$1"
 	shift
 	local versions=$(echo $@ | tr " " "\n")
-	local var="INTERNAL_${install}_INSTALLED_PYTHON_VERSIONS"
 	local mock_var="export DPV_MOCK_${install}_INSTALLED_PYTHON_VERSIONS"
-	eval "$var='$versions'"
 	eval "$mock_var='$versions'"
 }
 
@@ -51,23 +42,17 @@ mock_internal_available_python_versions() {
 	local install="$1"
 	shift
 	local versions=$(echo $@ | tr " " "\n")
-	local var="INTERNAL_${install}_AVAILABLE_PYTHON_VERSIONS"
 	local mock_var="export DPV_MOCK_${install}_AVAILABLE_PYTHON_VERSIONS"
-	eval "$var='$versions'"
 	eval "$mock_var='$versions'"
 }
 
 mock_virtualenvs_dir() {
-	CFG_VIRTUALENVS_DIR="$(pwd)/virtualenvs"
-
-	# for command tests:
-	export DPV_MOCK_VIRTUALENVS_DIR="$(pwd)/virtualenvs"
+	export DPV_MOCK_VIRTUALENVS_DIR="$DPV_DIR/virtualenvs"
+	CFG_VIRTUALENVS_DIR="$DPV_DIR/virtualenvs"
 }
 
 mock_virtualenv() {
-	if [[ "${DPV_MOCK_VIRTUALENVS_DIR:-}" == "" ]]; then
-		mock_virtualenvs_dir
-	fi
+	mock_virtualenvs_dir
 
 	local install_method
 	local python_version
@@ -86,10 +71,6 @@ mock_virtualenv() {
 			activate=1
 			shift
 			;;
-		--echo)
-			opt_echo=1
-			shift
-			;;
 		*)
 			echo "invalid argument: $1"
 			exit
@@ -100,15 +81,14 @@ mock_virtualenv() {
 	local venv_name="$(basename "$project_path")"
 
 	local venv_path="$DPV_MOCK_VIRTUALENVS_DIR/$python_version/$venv_name"
-	mkdir -p "$DPV_MOCK_VIRTUALENVS_DIR/$python_version/$venv_name"
+	mkdir -p "$venv_path"
 	printf "path = $project_path\nversion = $python_version\ninstall_method = $install_method\n" >"$venv_path/dpv.cfg"
 
 	if [[ "$activate" -eq "1" ]]; then
 		export DPV_MOCK_VIRTUALENV_DIR="$venv_path"
 	fi
-	if [[ "$opt_echo" -eq "1" ]]; then
-		echo "$venv_path"
-	fi
+
+	VENV_DIR="$venv_path"
 }
 
 #
@@ -116,11 +96,19 @@ mock_virtualenv() {
 #
 
 assert_log_output() {
-	run cat $INTERNAL_LOG_FILE
+	run cat $MOCK_LOG_FILE
 	assert_output "$@"
 }
 
 refute_log_output() {
-	run cat $INTERNAL_LOG_FILE
+	run cat $MOCK_LOG_FILE
 	refute_output "$@"
+}
+
+run_oneline() {
+	"$TEST_SHELL" "$DIR/../src/dpv" internal-function "$@"
+}
+
+run_script() {
+	"$TEST_SHELL" "$DIR/../src/dpv" internal-function
 }
