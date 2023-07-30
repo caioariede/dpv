@@ -44,7 +44,7 @@ aliases:
 1. **Download**
 
 ```bash
-bash -c 'curl -fsSLo $1 https://raw.githubusercontent.com/caioariede/dpv/HEAD/src/dpv && chmod +x $1' -- /usr/local/bin/dpv
+sh -c 'curl -fsSLo $1 https://raw.githubusercontent.com/caioariede/dpv/HEAD/src/dpv && chmod +x $1' -- /usr/local/bin/dpv
 ```
 
 2. **Configure** — Add the following line to your .bashrc, .zshrc, etc
