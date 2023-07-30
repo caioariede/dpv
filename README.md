@@ -8,6 +8,12 @@
 
 ![dpv](https://user-images.githubusercontent.com/55533/229202838-c2e73bbd-3943-43d1-8c3f-be02f64a88db.gif)
 
+## Why?
+
+1. It's simple. Just type `dpv` or `dpv <python version>` and get the work done.
+2. It's pure shell and POSIX-compliant tested with: ash bash dash ksh zsh
+3. It's built to get out of the way!
+
 ## Manual
 
 ```
