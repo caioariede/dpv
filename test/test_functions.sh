@@ -659,8 +659,11 @@ INTERNAL_INITIALIZE_VIRTUALENV_python_version="$TEST_CONFIG_MINOR_PYTHON_VERSION
 
 PWD=venv_test unsafe_dpv_internal_create_virtualenv
 
-test -f "\$INTERNAL_INITIALIZE_VIRTUALENV_virtualenv_dir"
+test -f "\$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir/dpv.cfg"
+test -d "\$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir/lib"
 EOF
+
+    assert_success
 }
 
 test_unsafe_dpv_internal_create_virtualenv_failure() { # @test
