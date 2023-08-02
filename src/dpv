@@ -562,9 +562,9 @@ unsafe_dpv_internal_create_virtualenv() {
 	func=$(eval "echo \"unsafe_dpv_internal_\"$INTERNAL_INITIALIZE_VIRTUALENV_install_method\"_get_python_executable\"")
 
 	fail="$(dpv_make_temp_file)"
-	( (eval "$func -m venv \"$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir\"" 2>&1) || echo >"$fail") | dpv_pipe_quote
+	( (eval "$($func) -m venv \"$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir\"" 2>&1) || echo >"$fail") | dpv_pipe_quote
 	if [ ! -s "$fail" ]; then
-		printf "path = %s\nversion = %s\ninstall_method = %s" "$PWD" "$INTERNAL_INITIALIZE_VIRTUALENV_python_version" "$INTERNAL_INITIALIZE_VIRTUALENV_install_method" >"$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir/dpv.cfg"
+		printf "path = %s\nversion = %s\ninstall_method = %s\n" "$PWD" "$INTERNAL_INITIALIZE_VIRTUALENV_python_version" "$INTERNAL_INITIALIZE_VIRTUALENV_install_method" >"$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir/dpv.cfg"
 		dpv_internal_log "created new virtualenv: $(basename "$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir")"
 		echo "$vendor_prefix done"
 	else
