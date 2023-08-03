@@ -1,6 +1,6 @@
 dpv (dee-pee-vee) is a dead simple virtual manager for Python that gets out of your way
 
-![e01c0828348239 56052c74596be](https://github.com/caioariede/dpv/assets/55533/7c1a5baa-8727-4417-80f2-41cdcead61d6)
+<img src="https://github.com/caioariede/dpv/assets/55533/7c1a5baa-8727-4417-80f2-41cdcead61d6" alt="Bem-te-vi, Great Kiskadee, Pitangus sulphuratus, credit of Helena Stainer" title="Bem-te-vi, Great Kiskadee, Pitangus sulphuratus, credit of Helena Stainer">
 
 [![CI](https://github.com/caioariede/dpv/actions/workflows/ci.yml/badge.svg)](https://github.com/caioariede/dpv/actions/workflows/ci.yml)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/caioariede/dpv)
