@@ -338,7 +338,8 @@ unsafe_dpv_internal_cmd_run_wrapper() {
 		unsafe_dpv_internal_cmd_info | dpv_pipe_format_theme
 	else
 		# Execute command
-		unsafe_dpv_internal_cmd_run "$*"
+		# shellcheck disable=2068
+		unsafe_dpv_internal_cmd_run $@
 	fi
 }
 
