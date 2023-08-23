@@ -8,8 +8,8 @@
         "replacements": [
           {
             "files": ["src/dpv"],
-            "from": "__VERSION__",
-            "to": "${nextRelease.version}",
+            "from": "CFG_VERSION=\".*\"",
+            "to": "CFG_VERSION=\"${nextRelease.version}\"",
             "results": [
               {
                 "file": "src/dpv",
@@ -22,8 +22,8 @@
           },
           {
             "files": ["README.md"],
-            "from": "v${lastRelease.version}",
-            "to": "v${nextRelease.version}",
+            "from": "https://github.com/caioariede/dpv/releases/download/.*/dpv",
+            "to": "https://github.com/caioariede/dpv/releases/download/v${nextRelease.version}/dpv",
             "results": [
               {
                 "file": "README.md",
