@@ -1,0 +1,52 @@
+name: Release
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read # for checkout
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # to be able to publish a GitHub release
+      issues: write # to be able to comment on released issues
+      pull-requests: write # to be able to comment on released pull requests
+      id-token: write # to enable use of OIDC for npm provenance
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "lts/*"
+
+      - name: Install dependencies
+        run: |
+          npm install commitlint \
+                      @commitlint/config-conventional \
+                      @semantic-release/exec \
+                      @semantic-release/git \
+                      semantic-release-replace-plugin \
+                      -D
+
+      - name: Validate Pull Request title with commitlint
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: "${{ github.event.pull_request.title }}"
+        run: |
+          printenv "PR_TITLE" | npx commitlint
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
