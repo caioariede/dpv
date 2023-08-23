@@ -50,7 +50,29 @@ aliases:
 1. **Download**
 
 ```bash
-sh -c 'curl -fsSLo $1 https://github.com/caioariede/dpv/releases/download/v0.9.11/dpv/HEAD/themes/creator.sh
+sh -c 'curl -fsSLo $1 https://github.com/caioariede/dpv/releases/download/v0.9.11/dpv && chmod +x $1' -- /usr/local/bin/dpv
+```
+
+2. **Configure** — Add the following line to your .bashrc, .zshrc, etc
+
+```bash
+eval "$(dpv internal-load-shell)"
+```
+
+3. **Try it**
+
+```bash
+dpv --temp # this won't create any files in the current directory
+```
+
+## Install a theme (optional)
+
+Yes, you can customize dpv's appearance :)
+
+First, download the theme:
+
+```bash
+curl -sfSLO --create-dirs --output-dir ~/.dpv/themes/ https://raw.githubusercontent.com/caioariede/dpv/HEAD/themes/creator.sh
 ```
 
 And add the following line to your .bashrc, .zshrc, etc (can be before or after dpv setup)

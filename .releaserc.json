@@ -22,7 +22,7 @@
           },
           {
             "files": ["README.md"],
-            "from": "https://github.com/caioariede/dpv/releases/download/[^]+/dpv",
+            "from": "https://github.com/caioariede/dpv/releases/download/[^/]+/dpv",
             "to": "https://github.com/caioariede/dpv/releases/download/v${nextRelease.version}/dpv",
             "results": [
               {
