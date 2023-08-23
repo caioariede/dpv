@@ -19,6 +19,20 @@
               }
             ],
             "countMatches": true
+          },
+          {
+            "files": ["README.md"],
+            "from": "v${lastRelease.version}",
+            "to": "v${nextRelease.version}",
+            "results": [
+              {
+                "file": "README.md",
+                "hasChanged": true,
+                "numMatches": 1,
+                "numReplacements": 1
+              }
+            ],
+            "countMatches": true
           }
         ]
       }
@@ -38,7 +52,7 @@
           {
             "path": "src/dpv",
             "name": "dpv",
-            "label": "Shell script"
+            "label": "dpv"
           }
         ]
       }
