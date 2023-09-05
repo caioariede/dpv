@@ -14,71 +14,10 @@ dpv (dee-pee-vee) is a dead simple alternative to [pyenv-virtualenv](https://git
 2. It's pure shell and POSIX-compliant tested with: ash bash dash ksh zsh
 3. It's built to get out of the way!
 
-## Usage
-
-```
-usage:
-  dpv [python version]
-
-commands:
-  dpv help             - display these instructions
-  dpv info             - display information about the current virtualenv
-  dpv list             - list virtualenvs created with dpv
-  dpv run [command]    - run command inside virtualenv [default: $SHELL]
-    --python [version] - specify python version
-    --temp             - use a temporary virtualenv
-  dpv versions         - display available python versions
-    --all              - display extended list of available python versions
-  dpv drop [name]      - remove virtualenv
-
-global arguments:
-  --pyenv              - use pyenv
-  --homebrew           - use homebrew
-
-aliases:
-  dpv run / dpv
-  dpv [version] / dpv run --python [version]
-  dpv info / dpv (when virtualenv is activated)
-  dpv help / --help / -h
-  dpv list / --list / ls / -l
-  dpv versions / -v
-  dpv versions --all / -a
-```
-
 ## Installation
 
-1. **Download**
+Check out the [installation instructions](https://github.com/caioariede/dpv/discussions/32)
 
-```bash
-sh -c 'curl -fsSLo $1 https://github.com/caioariede/dpv/releases/download/v0.9.13/dpv && chmod +x $1' -- /usr/local/bin/dpv
-```
+## Usage
 
-2. **Configure** — Add the following line to your .bashrc, .zshrc, etc
-
-```bash
-eval "$(dpv internal-load-shell)"
-```
-
-3. **Try it**
-
-```bash
-dpv --temp # this won't create any files in the current directory
-```
-
-## Install a theme (optional)
-
-Yes, you can customize dpv's appearance :)
-
-First, download the theme:
-
-```bash
-curl -sfSLO --create-dirs --output-dir ~/.dpv/themes/ https://raw.githubusercontent.com/caioariede/dpv/HEAD/themes/creator.sh
-```
-
-And add the following line to your .bashrc, .zshrc, etc (can be before or after dpv setup)
-
-```bash
-DPV_THEME=~/.dpv/themes/creator.sh
-```
-
-_Feel free to submit your own theme with a PR. Unfortunately right now there's no documentation around that, take a shot!_
+Take a look at the [dpv cheatsheet](https://github.com/caioariede/dpv/discussions/38) - or for more detailed instructions, [check the documentation](https://github.com/caioariede/dpv/discussions/33)
