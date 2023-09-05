@@ -75,6 +75,7 @@ ERR_CANNOT_RESOLVE_PYTHON_VERSION=137
 ERR_VIRTUALENV_INSTALL_METHOD_NOT_AVAILABLE=138
 ERR_INSTALLATION_FAILED=139
 ERR_CANNOT_CREATE_VIRTUALENV=140
+ERR_CANNOT_INSTALL_DEPENDENCIES=142
 ERR_VIRTUALENV_CANNOT_FIND_PYTHON_EXECUTABLE=141
 
 # VARS: Configuration
@@ -96,9 +97,12 @@ INTERNAL_LOG_FILE="${DPV_MOCK_LOG_FILE:-ø}"
 INTERNAL_RESOLVE_PYTHON_VERSION="${DPV_MOCK_RESOLVE_PYTHON_VERSION:-ø}"
 INTERNAL_RESOLVE_INSTALL_METHOD="${DPV_MOCK_RESOLVE_INSTALL_METHOD:-ø}"
 INTERNAL_ARG_PYTHON_VERSION="${DPV_MOCK_ARG_PYTHON_VERSION:-ø}"
+INTERNAL_ARG_DEPS="${DPV_MOCK_ARG_DEPS:-ø}"
 INTERNAL_INITIALIZE_VIRTUALENV_install_method="${DPV_MOCK_VIRTUALENV_INSTALL_METHOD:-ø}"
 INTERNAL_INITIALIZE_VIRTUALENV_python_version="${DPV_MOCK_VIRTUALENV_PYTHON_VERSION:-ø}"
 INTERNAL_INITIALIZE_VIRTUALENV_virtualenv_dir="${DPV_MOCK_VIRTUALENV_DIR:-${DPV_VIRTUALENV_DIR:-ø}}"
+
+DPV_MOCK_PIP="${DPV_MOCK_PIP:-ø}"
 
 #
 # Command functions
@@ -123,7 +127,8 @@ dpv_cmd_help() {
 	echo "  dpv list             - list virtualenvs created with dpv"
 	echo "  dpv run [command]    - run command inside virtualenv [default: \$SHELL]"
 	echo "    --python [version] - specify python version"
-	echo "    --temp             - use a temporary virtualenv"
+	echo "    --temp/--tmp       - use a temporary virtualenv"
+	echo "    --with/-w [dep]    - specify dependencies to pre-install"
 	echo "  dpv versions         - display available python versions"
 	echo "    --all              - display extended list of available python versions"
 	echo "  dpv drop [name]      - remove virtualenv"
@@ -376,6 +381,19 @@ unsafe_dpv_internal_cmd_run() {
 				ARG_TEMP=1
 				shift
 				;;
+			--with | -w)
+				#
+				# Command: dpv run --with [dep]
+				# Specify packages to be installed before running command
+				#
+				shift
+				if dpv_check_is_set "$INTERNAL_ARG_DEPS"; then
+					INTERNAL_ARG_DEPS="$INTERNAL_ARG_DEPS $1"
+				else
+					INTERNAL_ARG_DEPS="$1"
+				fi
+				shift
+				;;
 			-*)
 				echo "error: invalid argument: $1"
 				exit "$ERR_RUN_INVALID_ARGUMENT"
@@ -494,6 +512,7 @@ unsafe_dpv_internal_initialize_virtualenv() {
 	# Unsafe:
 	# - unsafe_dpv_internal_initialize_virtualenv
 	# - unsafe_dpv_internal_set_available_install_methods
+	# - unsafe_dpv_internal_install_deps
 	#
 	if dpv_internal_scan_virtualenv; then
 		# An existing virtualenv has been found, just use it
@@ -540,7 +559,31 @@ EOF
 	# If not possible, this will error out with: ERR_CANNOT_CREATE_VIRTUALENV
 	unsafe_dpv_internal_create_virtualenv
 
+	if dpv_check_is_set "$INTERNAL_ARG_DEPS"; then
+		# Install dependnecies
+		# If not possible, this will error out with: ERR_CANNOT_INSTALL_DEPENDENCIES
+		unsafe_dpv_internal_install_deps
+	fi
+
 	INTERNAL_INITIALIZE_VIRTUALENV_virtualenv_dir="$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir"
+}
+
+unsafe_dpv_internal_install_deps() {
+	if ! dpv_check_is_set "$DPV_MOCK_PIP"; then
+		pip="$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir/bin/python -m pip"
+	else
+		pip="$DPV_MOCK_PIP"
+	fi
+	fail="$(dpv_make_temp_file)"
+	echo "pip: installing dependencies"
+	( ($pip install $INTERNAL_ARG_DEPS 2>&1) || echo >"$fail") | dpv_pipe_quote
+	if [ ! -s "$fail" ]; then
+		echo "pip: done"
+	else
+		dpv_pipe_quote <"$fail"
+		echo "pip: failed"
+		exit "$ERR_CANNOT_INSTALL_DEPENDENCIES"
+	fi
 }
 
 unsafe_dpv_internal_create_virtualenv() {
@@ -1043,6 +1086,14 @@ dpv_internal_error_handling() {
 
 	"$ERR_CANNOT_RESOLVE_PYTHON_VERSION")
 		echo "dpv - cannot resolve python version"
+		;;
+
+	"$ERR_CANNOT_CREATE_VIRTUALENV")
+		echo "dpv - failed to create virtualenv"
+		;;
+
+	"$ERR_CANNOT_INSTALL_DEPENDENCIES")
+		echo "dpv - failed to install dependencies"
 		;;
 
 	"$ERR_VIRTUALENV_INSTALL_METHOD_NOT_AVAILABLE")
