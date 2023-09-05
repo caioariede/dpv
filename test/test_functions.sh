@@ -452,6 +452,35 @@ test_unsafe_dpv_internal_set_available_install_methods_fail() { # @test
 	assert_failure "136"
 }
 
+test_unsafe_dpv_internal_install_deps_success() { # @test
+	test_fn() {
+		export DPV_MOCK_ARG_DEPS="y==1 x[foo]<2"
+		export DPV_MOCK_PIP="echo"
+		dpv-eval unsafe_dpv_internal_install_deps
+	}
+
+	run test_fn
+
+	assert_success
+	assert_line --index 0 "pip: installing dependencies"
+	assert_line --index 1 "  > install y==1 x[foo]<2"
+	assert_line --index 2 "pip: done"
+}
+
+test_unsafe_dpv_internal_install_deps_error() { # @test
+	test_fn() {
+		export DPV_MOCK_ARG_DEPS="y==1 x[foo]<2"
+		export DPV_MOCK_PIP="false"
+		dpv-eval unsafe_dpv_internal_install_deps
+	}
+
+	run test_fn
+
+	assert_failure
+	assert_line --index 0 "pip: installing dependencies"
+	assert_line --index 2 "pip: failed"
+}
+
 test_dpv_internal_run_command_log_failure_fail() { # @test
 	test_fn() {
 		mock_log_file
@@ -663,7 +692,7 @@ test -f "\$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir/dpv.cfg"
 test -d "\$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir/lib"
 EOF
 
-    assert_success
+	assert_success
 }
 
 test_unsafe_dpv_internal_create_virtualenv_failure() { # @test

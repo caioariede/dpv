@@ -17,7 +17,7 @@ setup() {
 	mock_log_file
 }
 
-#test_coverage() { 
+#test_coverage() {
 #	# the poor's man simple code coverage
 #	test_fn() {
 #		local testcases="$(grep "^test_cmd_.*@test" "$BATS_TEST_FILENAME")"
