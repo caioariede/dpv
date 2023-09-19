@@ -473,16 +473,21 @@ unsafe_dpv_cmd_try() {
 		cat <<EOF >"$dpv_python_startup"
 
 def dpv_get_modules(packages):
-    import importlib.metadata
-    import pkg_resources
+    try:
+        from importlib.metadata import packages_distributions
+    except ImportError:
+        import logging
+        logging.warning("dpv only auto-import modules with Python 3.10+")
+    else:
+        import pkg_resources
 
-    packages = [r.name for r in pkg_resources.parse_requirements(packages)]
-    print(f"loading packages: {', '.join(packages)}")
-    print("")
-    for m, names in importlib.metadata.packages_distributions().items():
-        for n in names:
-            if n in packages:
-                yield m
+        packages = [r.name for r in pkg_resources.parse_requirements(packages)]
+        print(f"loading packages: {', '.join(packages)}")
+        print("")
+        for m, names in packages_distributions().items():
+            for n in names:
+                if n in packages:
+                    yield m
 
 print("")
 print("welcome to dpv try shell! :)")
