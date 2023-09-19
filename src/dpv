@@ -77,6 +77,7 @@ ERR_INSTALLATION_FAILED=139
 ERR_CANNOT_CREATE_VIRTUALENV=140
 ERR_CANNOT_INSTALL_DEPENDENCIES=142
 ERR_VIRTUALENV_CANNOT_FIND_PYTHON_EXECUTABLE=141
+ERR_TRY_MISSING_DEPENDENCY_ARG=143
 
 # VARS: Configuration
 CFG_VERSION="0.10.0"
@@ -122,20 +123,23 @@ dpv_cmd_help() {
 	echo "  dpv [python version]"
 	echo
 	echo "commands:"
-	echo "  dpv help             - display these instructions"
-	echo "  dpv info             - display information about the current virtualenv"
-	echo "  dpv list             - list virtualenvs created with dpv"
-	echo "  dpv run [command]    - run command inside virtualenv [default: \$SHELL]"
-	echo "    --python [version] - specify python version"
-	echo "    --temp/--tmp       - use a temporary virtualenv"
-	echo "    --with/-w [dep]    - specify dependencies to pre-install"
-	echo "  dpv versions         - display available python versions"
-	echo "    --all              - display extended list of available python versions"
-	echo "  dpv drop [name]      - remove virtualenv"
+	echo "  dpv help               - display these instructions"
+	echo "  dpv info               - display information about the current virtualenv"
+	echo "  dpv list               - list virtualenvs created with dpv"
+	echo "  dpv run [command]      - run command inside virtualenv [default: \$SHELL]"
+	echo "    --python [version]   - specify python version"
+	echo "    --temp/--tmp         - use a temporary virtualenv"
+	echo "    --with/-w [dep]      - specify dependencies to pre-install"
+	echo "  dpv try [dep]          - install dependency and start python shell"
+	echo "  dpv try [dep] -- [cmd] - install dependency and run command"
+	echo "    --with/-w [dep]      - install extra dependency before running command"
+	echo "  dpv versions           - display available python versions"
+	echo "    --all                - display extended list of available python versions"
+	echo "  dpv drop [name]        - remove virtualenv"
 	echo
 	echo "global arguments:"
-	echo "  --pyenv              - use pyenv"
-	echo "  --homebrew           - use homebrew"
+	echo "  --pyenv                - use pyenv"
+	echo "  --homebrew             - use homebrew"
 	echo
 	echo "aliases:"
 	echo "  dpv run / dpv"
@@ -357,8 +361,6 @@ unsafe_dpv_internal_cmd_run() {
 	# - ERR_RUN_INVALID_ARGUMENT
 	# - unsafe_dpv_internal_initialize_virtualenv
 	#
-	trap 'dpv_internal_error_handling $?' EXIT
-
 	CMD=""
 
 	while [ "$#" -gt 0 ]; do
@@ -392,6 +394,10 @@ unsafe_dpv_internal_cmd_run() {
 				else
 					INTERNAL_ARG_DEPS="$1"
 				fi
+				shift
+				;;
+			--)
+				CMD=" "
 				shift
 				;;
 			-*)
@@ -433,6 +439,65 @@ EOF
 		#
 		PATH=$INTERNAL_INITIALIZE_VIRTUALENV_virtualenv_dir/bin:$PATH $CMD
 	fi
+}
+
+unsafe_dpv_cmd_try() {
+	case "$1" in
+	-* | "")
+		exit "$ERR_TRY_MISSING_DEPENDENCY_ARG"
+		;;
+	*)
+		dep="$1"
+		shift
+		args=""
+		cmd_set=0
+		py_packages="$dep"
+		while [ "$#" -gt 0 ]; do
+			case "$1" in
+			--)
+				cmd_set=1
+				;;
+			--with | -w)
+				args="$args $1"
+				shift
+				py_packages="$py_packages,$1"
+				;;
+			esac
+			args="$args $1"
+			shift
+		done
+		if [ "$cmd_set" -eq 0 ]; then
+			args="$args -- python"
+		fi
+		dpv_python_startup="$(dpv_make_temp_file)"
+		cat <<EOF >"$dpv_python_startup"
+
+def dpv_get_modules(packages):
+    import importlib.metadata
+    import pkg_resources
+
+    packages = [r.name for r in pkg_resources.parse_requirements(packages)]
+    print(f"loading packages: {', '.join(packages)}")
+    print("")
+    for m, names in importlib.metadata.packages_distributions().items():
+        for n in names:
+            if n in packages:
+                yield m
+
+print("")
+print("welcome to dpv try shell! :)")
+print("")
+
+for m in dpv_get_modules("$py_packages".split(",")):
+    locals()[m] = __import__(m)
+    print(f"- dpv imported module: {m}")
+
+print("")
+
+EOF
+		PYTHONSTARTUP="$dpv_python_startup" unsafe_dpv_internal_cmd_run_wrapper "--with $dep --temp $args"
+		;;
+	esac
 }
 
 #
@@ -940,6 +1005,8 @@ dpv_internal_main() {
 	#
 	# Main
 	#
+	trap 'dpv_internal_error_handling $?' EXIT
+
 	CMD=""
 	CMD_ARGS=""
 
@@ -1028,6 +1095,10 @@ EOF
 		unsafe_dpv_internal_cmd_run_wrapper "$CMD_ARGS"
 		;;
 
+	try)
+		unsafe_dpv_cmd_try $CMD_ARGS
+		;;
+
 	versions | -v)
 		# shellcheck disable=2086
 		dpv_internal_cmd_versions "$CMD_ARGS" | dpv_pipe_format_theme
@@ -1074,6 +1145,10 @@ dpv_internal_error_handling() {
 
 	"$ERR_RUN_INVALID_ARGUMENT")
 		echo "dpv - invalid argument passed to run"
+		;;
+
+	"$ERR_TRY_MISSING_DEPENDENCY_ARG")
+		echo "dpv - the try command requires one package as the first argument"
 		;;
 
 	"$ERR_CANNOT_DETERMINE_PYTHON_VERSION")
