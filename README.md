@@ -19,7 +19,7 @@ dpv (dee-pee-vee) is a dead simple alternative to [pyenv-virtualenv](https://git
 1. **Download**
 
 ```bash
-sh -c 'curl -fsSLo $1 https://github.com/caioariede/dpv/releases/download/v0.11.1/dpv && chmod +x $1' -- /usr/local/bin/dpv
+sh -c 'curl -fsSLo $1 https://github.com/caioariede/dpv/releases/download/v0.11.2/dpv && chmod +x $1' -- /usr/local/bin/dpv
 ```
 
 2. **Configure** — Add the following line to your .bashrc, .zshrc, etc
