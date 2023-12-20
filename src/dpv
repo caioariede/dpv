@@ -225,7 +225,27 @@ dpv_internal_cmd_drop() {
 	echo "command: drop virtualenv"
 	echo
 
-	if [ "$#" -eq "0" ]; then
+	opt_name=""
+	opt_dry_run=0
+
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--dry-run | -d)
+			opt_dry_run=1
+			;;
+		*)
+			if dpv_check_string_is_empty "$opt_name"; then
+				opt_name="$1"
+			else
+				echo "error: drop command does not accept multiple virtualenvs"
+				exit 1
+			fi
+			;;
+		esac
+		shift
+	done
+
+	if dpv_check_string_is_empty "$opt_name"; then
 		#
 		# Command: dpv drop
 		# Removes the current virtualenv
@@ -234,23 +254,29 @@ dpv_internal_cmd_drop() {
 			remove_dir="$INTERNAL_INITIALIZE_VIRTUALENV_virtualenv_dir"
 			if [ "$(dpv_string_count_characters "$remove_dir" "/")" -lt 2 ]; then
 				echo "aborting! it doesn't seem the right directory to delete: $remove_dir"
+			elif [ "$opt_dry_run" -eq 1 ]; then
+				echo "would drop $remove_dir"
 			else
 				rm -rf "$remove_dir"
 				echo "dropped $remove_dir"
-				kill -SIGUSR1 "$PPID"
+				kill -s USR1 "$PPID"
 			fi
 		else
 			echo "error: virtualenv not activated"
-			return
+			exit 1
 		fi
 	else
 		#
 		# Command: dpv drop [name]
 		# Removes the virtualenv matching [name]
 		#
-		find "$CFG_VIRTUALENVS_DIR" -maxdepth 2 -mindepth 2 -name "$1" | while IFS= read -r line; do
-			rm -rf "$line"
-			echo "dropped $line"
+		find "$CFG_VIRTUALENVS_DIR" -maxdepth 2 -mindepth 2 -iname "$opt_name" | while IFS= read -r line; do
+			if [ "$opt_dry_run" -eq 1 ]; then
+				echo "would drop $line"
+			else
+				rm -rf "$line"
+				echo "dropped $line"
+			fi
 		done
 	fi
 }
@@ -1110,8 +1136,10 @@ EOF
 		;;
 
 	drop | rm)
-		#dpv_pipe_format_theme < <(dpv_internal_cmd_drop $CMD_ARGS)
-		dpv_internal_cmd_drop "$CMD_ARGS"
+		set -o noglob
+		set -- "$CMD_ARGS"
+		# shellcheck disable=SC2068
+		dpv_internal_cmd_drop $@ | dpv_pipe_format_theme
 		;;
 
 	help | --help | -h)
