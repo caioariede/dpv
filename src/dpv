@@ -136,6 +136,7 @@ dpv_cmd_help() {
 	echo "  dpv versions           - display available python versions"
 	echo "    --all                - display extended list of available python versions"
 	echo "  dpv drop [name]        - remove virtualenv"
+	echo "    --dry-run/-d         - show directories that would be removed"
 	echo
 	echo "global arguments:"
 	echo "  --pyenv                - use pyenv"
