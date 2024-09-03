@@ -38,10 +38,10 @@ jobs:
 
       - uses: gabrielfalcao/pyenv-action@v14
         with:
-          default: "3.9.10"
+          default: "3.9.13"
 
       - name: Test functions with pyenv
-        run: ./runtest.sh test/test_functions.sh --filter "PYENV"
+        run: ./runtest.sh test/test_functions.sh --filter-tags vendor:pyenv
 
       - name: Test commands
         run: ./runtest.sh test/test_commands.sh
@@ -51,7 +51,7 @@ jobs:
     strategy:
       matrix:
         python:
-          - "3.9.10"
+          - "3.9.13"
 
     steps:
       - uses: actions/checkout@v2
@@ -59,7 +59,7 @@ jobs:
           submodules: recursive
 
       - name: Test functions with homebrew
-        run: ./runtest.sh test/test_functions.sh --filter "HOMEBREW"
+        run: ./runtest.sh test/test_functions.sh --filter-tags vendor:homebrew
         env:
           BATS_MOCK_HOMEBREW: 0
 
@@ -71,7 +71,7 @@ jobs:
     strategy:
       matrix:
         python:
-          - "3.9.10"
+          - "3.9.13"
 
     steps:
       - uses: actions/checkout@v2
@@ -85,9 +85,34 @@ jobs:
         run: pyenv install "${{ matrix.python }}"
 
       - name: Test functions with pyenv
-        run: ./runtest.sh test/test_functions.sh --filter "PYENV"
+        run: ./runtest.sh test/test_functions.sh --filter-tags vendor:pyenv
         env:
           BATS_MOCK_PYENV: 0
+
+      - name: Test commands
+        run: ./runtest.sh test/test_commands.sh
+
+  macos-uv:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python:
+          - "3.12.3"
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Set up uv
+        # Install latest uv version using the installer
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install Python ${{ matrix.python }} with uv
+        run: uv python install "${{ matrix.python }}"
+
+      - name: Test functions with uv
+        run: ./runtest.sh test/test_functions.sh --filter-tags vendor:uv
 
       - name: Test commands
         run: ./runtest.sh test/test_commands.sh
