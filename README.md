@@ -14,6 +14,12 @@ dpv (dee-pee-vee) is a dead simple alternative to [pyenv-virtualenv](https://git
 2. It's pure shell and POSIX-compliant tested with: ash bash dash ksh zsh
 3. It's built to get out of the way!
 
+## How?
+
+Think of `dpv` as an interface for whaterver of these tools you have installed: `uv`, `pyenv`, `brew`
+
+It will automatically pick the one that is available and use it for the job.
+
 ## Installation
 
 1. **Download**
