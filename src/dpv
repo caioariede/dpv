@@ -90,6 +90,7 @@ CFG_UV_EXECUTABLE="${UV_EXECUTABLE:-uv}"
 CFG_PREFERRED_INSTALL_METHODS="UV PYENV HOMEBREW"
 
 # VARS: Internal
+INTERNAL_UV_PROJECT_DIR="${DPV_MOCK_UV_PROJECT_DIR:-ø}"
 INTERNAL_UV_INSTALLED_PYTHON_VERSIONS="$([ ! -z "${DPV_MOCK_UV_INSTALLED_PYTHON_VERSIONS+x}" ] && echo "$DPV_MOCK_UV_INSTALLED_PYTHON_VERSIONS" || echo "ø")"
 INTERNAL_UV_AVAILABLE_PYTHON_VERSIONS="${DPV_MOCK_UV_AVAILABLE_PYTHON_VERSIONS:-ø}"
 INTERNAL_PYENV_INSTALLED_PYTHON_VERSIONS="$([ ! -z "${DPV_MOCK_PYENV_INSTALLED_PYTHON_VERSIONS+x}" ] && echo "$DPV_MOCK_PYENV_INSTALLED_PYTHON_VERSIONS" || echo "ø")"
@@ -107,6 +108,7 @@ INTERNAL_INITIALIZE_VIRTUALENV_python_version="${DPV_MOCK_VIRTUALENV_PYTHON_VERS
 INTERNAL_INITIALIZE_VIRTUALENV_virtualenv_dir="${DPV_MOCK_VIRTUALENV_DIR:-${DPV_VIRTUALENV_DIR:-ø}}"
 
 DPV_MOCK_PIP="${DPV_MOCK_PIP:-ø}"
+DPV_MOCK_UV_INSTALL="${DPV_MOCK_UV_INSTALL:-ø}"
 
 #
 # Command functions
@@ -686,21 +688,45 @@ EOF
 }
 
 unsafe_dpv_internal_install_deps() {
-	if ! dpv_check_is_set "$DPV_MOCK_PIP"; then
-		pip="$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir/bin/python -m pip"
-	else
-		pip="$DPV_MOCK_PIP"
-	fi
-	fail="$(dpv_make_temp_file)"
-	echo "pip: installing dependencies"
-	( ($pip install $INTERNAL_ARG_DEPS 2>&1) || echo >"$fail") | dpv_pipe_quote
-	if [ ! -s "$fail" ]; then
-		echo "pip: done"
-	else
-		dpv_pipe_quote <"$fail"
-		echo "pip: failed"
-		exit "$ERR_CANNOT_INSTALL_DEPENDENCIES"
-	fi
+	case "$INTERNAL_INITIALIZE_VIRTUALENV_install_method" in
+	UV)
+		if dpv_check_is_set "$INTERNAL_UV_PROJECT_DIR"; then
+			cd "$INTERNAL_UV_PROJECT_DIR"
+		fi
+		if ! dpv_check_is_set "$DPV_MOCK_UV_INSTALL"; then
+			uv_install="$CFG_UV_EXECUTABLE add"
+		else
+			uv_install="$DPV_MOCK_UV_INSTALL"
+		fi
+		fail="$(dpv_make_temp_file)"
+		echo "uv: installing dependencies"
+		( ($uv_install setuptools "$INTERNAL_ARG_DEPS" 2>&1) || echo >"$fail") | dpv_pipe_quote
+		if [ ! -s "$fail" ]; then
+			echo "uv: done"
+		else
+			dpv_pipe_quote <"$fail"
+			echo "uv: failed"
+			exit "$ERR_CANNOT_INSTALL_DEPENDENCIES"
+		fi
+		;;
+	*)
+		if ! dpv_check_is_set "$DPV_MOCK_PIP"; then
+			pip="$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir/bin/python -m pip"
+		else
+			pip="$DPV_MOCK_PIP"
+		fi
+		fail="$(dpv_make_temp_file)"
+		echo "pip: installing dependencies"
+		( ($pip install setuptools $INTERNAL_ARG_DEPS 2>&1) || echo >"$fail") | dpv_pipe_quote
+		if [ ! -s "$fail" ]; then
+			echo "pip: done"
+		else
+			dpv_pipe_quote <"$fail"
+			echo "pip: failed"
+			exit "$ERR_CANNOT_INSTALL_DEPENDENCIES"
+		fi
+		;;
+	esac
 }
 
 unsafe_dpv_internal_create_virtualenv() {
@@ -712,7 +738,19 @@ unsafe_dpv_internal_create_virtualenv() {
 	# - ERR_CANNOT_CREATE_VIRTUALENV
 	#
 	if [ "${ARG_TEMP:-}" = "1" ]; then
-		INTERNAL_CREATE_VIRTUALENV_virtualenv_dir=$(dpv_internal_mkdir_virtualenv_temporary)
+		case "$INTERNAL_INITIALIZE_VIRTUALENV_install_method" in
+		UV)
+			INTERNAL_UV_PROJECT_DIR="$(dpv_make_temp_dir)"
+			INTERNAL_CREATE_VIRTUALENV_virtualenv_dir="$INTERNAL_UV_PROJECT_DIR/.venv"
+			mv "$(dpv_internal_mkdir_virtualenv_temporary)" "$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir"
+			tmpname="$(basename "$INTERNAL_UV_PROJECT_DIR")"
+			printf "[project]\nname = \"%s\"\nversion = \"0.0.0\"\nrequires-python = \"==%s\"\n" "$tmpname" "$INTERNAL_INITIALIZE_VIRTUALENV_python_version" >"$INTERNAL_UV_PROJECT_DIR/pyproject.toml"
+			;;
+		*)
+			INTERNAL_CREATE_VIRTUALENV_virtualenv_dir=$(dpv_internal_mkdir_virtualenv_temporary)
+			tmpname="$(basename "$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir")"
+			;;
+		esac
 	else
 		INTERNAL_CREATE_VIRTUALENV_virtualenv_dir=$(dpv_internal_mkdir_virtualenv)
 	fi
@@ -726,7 +764,7 @@ unsafe_dpv_internal_create_virtualenv() {
 	( (eval "$($func)" 2>&1) || echo >"$fail") | dpv_pipe_quote
 	if [ ! -s "$fail" ]; then
 		printf "path = %s\nversion = %s\ninstall_method = %s\n" "$PWD" "$INTERNAL_INITIALIZE_VIRTUALENV_python_version" "$INTERNAL_INITIALIZE_VIRTUALENV_install_method" >"$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir/dpv.cfg"
-		dpv_internal_log "created new virtualenv: $(basename "$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir")"
+		dpv_internal_log "created new virtualenv: $tmpname"
 		echo "$vendor_prefix done"
 	else
 		rm -rf "$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir"
@@ -1410,6 +1448,13 @@ dpv_PYENV_exec() {
 	$CFG_PYENV_EXECUTABLE "$@"
 }
 
+unsafe_dpv_internal_PYENV_create_virtualenv() {
+	virtualenv_dir="$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir"
+	python_executable="$(unsafe_dpv_internal_PYENV_get_python_executable)"
+
+	"$python_executable" -m venv "$virtualenv_dir"
+}
+
 unsafe_dpv_internal_PYENV_install() {
 	#
 	# Install Python version using pyenv
@@ -1586,6 +1631,13 @@ dpv_HOMEBREW_exec() {
 	# Wrapper around the homebrew executable
 	#
 	HOMEBREW_NO_AUTO_UPDATE=1 "$CFG_HOMEBREW_EXECUTABLE" "$@"
+}
+
+unsafe_dpv_internal_HOMEBREW_create_virtualenv() {
+	virtualenv_dir="$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir"
+	python_executable="$(unsafe_dpv_internal_HOMEBREW_get_python_executable)"
+
+	"$python_executable" -m venv "$virtualenv_dir"
 }
 
 unsafe_dpv_internal_HOMEBREW_get_python_executable() {

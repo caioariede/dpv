@@ -51,6 +51,10 @@ mock_virtualenvs_dir() {
 	CFG_VIRTUALENVS_DIR="$DPV_DIR/virtualenvs"
 }
 
+mock_virtualenv_install_method() {
+	export DPV_MOCK_VIRTUALENV_INSTALL_METHOD="$1"
+}
+
 mock_virtualenv() {
 	mock_virtualenvs_dir
 
