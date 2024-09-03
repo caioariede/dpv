@@ -690,7 +690,9 @@ EOF
 unsafe_dpv_internal_install_deps() {
 	case "$INTERNAL_INITIALIZE_VIRTUALENV_install_method" in
 	UV)
-		cd "$INTERNAL_UV_PROJECT_DIR"
+		if dpv_check_is_set "$INTERNAL_UV_PROJECT_DIR"; then
+			cd "$INTERNAL_UV_PROJECT_DIR"
+		fi
 		if ! dpv_check_is_set "$DPV_MOCK_UV_INSTALL"; then
 			uv_install="$CFG_UV_EXECUTABLE add"
 		else
@@ -738,15 +740,15 @@ unsafe_dpv_internal_create_virtualenv() {
 	if [ "${ARG_TEMP:-}" = "1" ]; then
 		case "$INTERNAL_INITIALIZE_VIRTUALENV_install_method" in
 		UV)
-            INTERNAL_UV_PROJECT_DIR="$(dpv_make_temp_dir)"
+			INTERNAL_UV_PROJECT_DIR="$(dpv_make_temp_dir)"
 			INTERNAL_CREATE_VIRTUALENV_virtualenv_dir="$INTERNAL_UV_PROJECT_DIR/.venv"
 			mv "$(dpv_internal_mkdir_virtualenv_temporary)" "$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir"
-            tmpname="$(basename "$INTERNAL_UV_PROJECT_DIR")"
+			tmpname="$(basename "$INTERNAL_UV_PROJECT_DIR")"
 			printf "[project]\nname = \"%s\"\nversion = \"0.0.0\"\nrequires-python = \"==%s\"\n" "$tmpname" "$INTERNAL_INITIALIZE_VIRTUALENV_python_version" >"$INTERNAL_UV_PROJECT_DIR/pyproject.toml"
 			;;
 		*)
 			INTERNAL_CREATE_VIRTUALENV_virtualenv_dir=$(dpv_internal_mkdir_virtualenv_temporary)
-            tmpname="$(basename "$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir")"
+			tmpname="$(basename "$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir")"
 			;;
 		esac
 	else

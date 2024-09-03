@@ -600,7 +600,7 @@ test_unsafe_dpv_internal_UV_install_deps_success() { # @test
 
 	assert_success
 	assert_line --index 0 "uv: installing dependencies"
-	assert_line --index 1 "  > y==1 x[foo]<2"
+	assert_line --index 1 "  > setuptools y==1 x[foo]<2"
 	assert_line --index 2 "uv: done"
 }
 
@@ -615,7 +615,7 @@ test_unsafe_dpv_internal_install_deps_success() { # @test
 
 	assert_success
 	assert_line --index 0 "pip: installing dependencies"
-	assert_line --index 1 "  > install y==1 x[foo]<2"
+	assert_line --index 1 "  > install setuptools y==1 x[foo]<2"
 	assert_line --index 2 "pip: done"
 }
 
