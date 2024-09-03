@@ -585,6 +585,25 @@ test_unsafe_dpv_internal_set_available_install_methods_fail() { # @test
 	assert_failure "136"
 }
 
+# bats test_tags=vendor:uv
+test_unsafe_dpv_internal_UV_install_deps_success() { # @test
+	test_fn() {
+        mock_virtualenv_install_method "UV"
+
+		export DPV_MOCK_ARG_DEPS="y==1 x[foo]<2"
+		export DPV_MOCK_UV_INSTALL="echo"
+
+		dpv-eval unsafe_dpv_internal_install_deps
+	}
+
+	run test_fn
+
+	assert_success
+	assert_line --index 0 "uv: installing dependencies"
+	assert_line --index 1 "  > y==1 x[foo]<2"
+	assert_line --index 2 "uv: done"
+}
+
 test_unsafe_dpv_internal_install_deps_success() { # @test
 	test_fn() {
 		export DPV_MOCK_ARG_DEPS="y==1 x[foo]<2"
