@@ -84,11 +84,14 @@ CFG_VERSION="0.11.4"
 CFG_THEME="${DPV_THEME:-cat}"
 CFG_DIR="${DPV_DIR:-$HOME/.dpv}"
 CFG_VIRTUALENVS_DIR="${DPV_MOCK_VIRTUALENVS_DIR:-$CFG_DIR/virtualenvs}"
-CFG_PYENV_EXECUTABLE="${PYENV_EXECUTABLE:-pyenv}"
 CFG_HOMEBREW_EXECUTABLE="${HOMEBREW_EXECUTABLE:-brew}"
-CFG_PREFERRED_INSTALL_METHODS="PYENV HOMEBREW"
+CFG_PYENV_EXECUTABLE="${PYENV_EXECUTABLE:-pyenv}"
+CFG_UV_EXECUTABLE="${UV_EXECUTABLE:-uv}"
+CFG_PREFERRED_INSTALL_METHODS="UV PYENV HOMEBREW"
 
 # VARS: Internal
+INTERNAL_UV_INSTALLED_PYTHON_VERSIONS="$([ ! -z "${DPV_MOCK_UV_INSTALLED_PYTHON_VERSIONS+x}" ] && echo "$DPV_MOCK_UV_INSTALLED_PYTHON_VERSIONS" || echo "ø")"
+INTERNAL_UV_AVAILABLE_PYTHON_VERSIONS="${DPV_MOCK_UV_AVAILABLE_PYTHON_VERSIONS:-ø}"
 INTERNAL_PYENV_INSTALLED_PYTHON_VERSIONS="$([ ! -z "${DPV_MOCK_PYENV_INSTALLED_PYTHON_VERSIONS+x}" ] && echo "$DPV_MOCK_PYENV_INSTALLED_PYTHON_VERSIONS" || echo "ø")"
 INTERNAL_PYENV_AVAILABLE_PYTHON_VERSIONS="${DPV_MOCK_PYENV_AVAILABLE_PYTHON_VERSIONS:-ø}"
 INTERNAL_HOMEBREW_INSTALLED_PYTHON_VERSIONS="$([ ! -z "${DPV_MOCK_HOMEBREW_INSTALLED_PYTHON_VERSIONS+x}" ] && echo "$DPV_MOCK_HOMEBREW_INSTALLED_PYTHON_VERSIONS" || echo "ø")"
@@ -134,11 +137,13 @@ dpv_cmd_help() {
 	echo "  dpv try [dep] -- [cmd] - install dependency and run command"
 	echo "    --with/-w [dep]      - install extra dependency before running command"
 	echo "  dpv versions           - display available python versions"
-	echo "    --all                - display extended list of available python versions"
+	echo "    --installed/-i       - display installed python versions"
+	echo "    --all/-a             - display extended list of available python versions"
 	echo "  dpv drop [name]        - remove virtualenv"
 	echo "    --dry-run/-d         - show directories that would be removed"
 	echo
 	echo "global arguments:"
+	echo "  --uv                   - use uv"
 	echo "  --pyenv                - use pyenv"
 	echo "  --homebrew             - use homebrew"
 	echo
@@ -160,8 +165,10 @@ dpv_internal_cmd_versions() {
 	# Command: dpv versions
 	# Lists the available Python versions
 	#
+	unsafe_dpv_internal_set_available_install_methods
+
 	case "${1:-}" in
-	--installed)
+	--installed | -i)
 		#
 		# Command: dpv versions --installed
 		# Lists *only* installed versions
@@ -169,12 +176,16 @@ dpv_internal_cmd_versions() {
 		echo "command: installed python versions"
 		echo
 
-		dpv_internal_PYENV_installed_python_versions
-		echo "pyenv: $(echo "$INTERNAL_PYENV_INSTALLED_PYTHON_VERSIONS" | dpv_internal_pipe_format_python_versions "PYENV" --all | dpv_pipe_format_nl_to_space)"
+		while IFS= read -r install; do
+			eval "dpv_internal_${install}_installed_python_versions"
 
-		dpv_internal_HOMEBREW_installed_python_versions
-		echo "homebrew: $(echo "$INTERNAL_HOMEBREW_INSTALLED_PYTHON_VERSIONS" | dpv_internal_pipe_format_python_versions "HOMEBREW" --all | dpv_pipe_format_nl_to_space)"
+			installed_versions_var="INTERNAL_${install}_INSTALLED_PYTHON_VERSIONS"
+			installed_versions=$(eval "echo \"\$$installed_versions_var\"")
 
+			echo "$(dpv_string_lowercase "$install"): $(echo "$installed_versions" | dpv_internal_pipe_format_python_versions "$install" --all | dpv_pipe_format_nl_to_space)"
+		done <<EOF
+$INTERNAL_AVAILABLE_INSTALL_METHODS
+EOF
 		;;
 
 	--all | -a)
@@ -185,13 +196,17 @@ dpv_internal_cmd_versions() {
 		echo "command: available python versions (extended list)"
 		echo
 
-		dpv_internal_PYENV_available_python_versions
-		dpv_internal_PYENV_installed_python_versions
-		echo "pyenv: $(echo "$INTERNAL_PYENV_AVAILABLE_PYTHON_VERSIONS" | dpv_internal_pipe_format_python_versions "PYENV" --all | dpv_pipe_format_nl_to_space)"
+		while IFS= read -r install; do
+			eval "dpv_internal_${install}_available_python_versions"
+			eval "dpv_internal_${install}_installed_python_versions"
 
-		dpv_internal_HOMEBREW_available_python_versions
-		dpv_internal_HOMEBREW_installed_python_versions
-		echo "homebrew: $(echo "$INTERNAL_HOMEBREW_AVAILABLE_PYTHON_VERSIONS" | dpv_internal_pipe_format_python_versions "HOMEBREW" --all | dpv_pipe_format_nl_to_space)"
+			available_versions_var="INTERNAL_${install}_AVAILABLE_PYTHON_VERSIONS"
+			available_versions=$(eval "echo \"\$$available_versions_var\"")
+
+			echo "$(dpv_string_lowercase "$install"): $(echo "$available_versions" | dpv_internal_pipe_format_python_versions "$install" --all | dpv_pipe_format_nl_to_space)"
+		done <<EOF
+$INTERNAL_AVAILABLE_INSTALL_METHODS
+EOF
 		;;
 
 	"")
@@ -202,13 +217,17 @@ dpv_internal_cmd_versions() {
 		echo "command: available python versions"
 		echo
 
-		dpv_internal_PYENV_available_python_versions
-		dpv_internal_PYENV_installed_python_versions
-		echo "pyenv: $(echo "$INTERNAL_PYENV_AVAILABLE_PYTHON_VERSIONS" | dpv_internal_pipe_format_python_versions "PYENV" | dpv_pipe_format_nl_to_space)"
+		while IFS= read -r install; do
+			eval "dpv_internal_${install}_available_python_versions"
+			eval "dpv_internal_${install}_installed_python_versions"
 
-		dpv_internal_HOMEBREW_available_python_versions
-		dpv_internal_HOMEBREW_installed_python_versions
-		echo "homebrew: $(echo "$INTERNAL_HOMEBREW_AVAILABLE_PYTHON_VERSIONS" | dpv_internal_pipe_format_python_versions "HOMEBREW" | dpv_pipe_format_nl_to_space)"
+			available_versions_var="INTERNAL_${install}_AVAILABLE_PYTHON_VERSIONS"
+			available_versions=$(eval "echo \"\$$available_versions_var\"")
+
+			echo "$(dpv_string_lowercase "$install"): $(echo "$available_versions" | dpv_internal_pipe_format_python_versions "$install" | dpv_pipe_format_nl_to_space)"
+		done <<EOF
+$INTERNAL_AVAILABLE_INSTALL_METHODS
+EOF
 		;;
 
 	*)
@@ -553,6 +572,7 @@ dpv_print_config() {
 	printf "  CFG_VIRTUALENVS_DIR=%s\n" "$CFG_VIRTUALENVS_DIR"
 	printf "  CFG_THEME=%s\n" "$CFG_THEME"
 	printf "  CFG_DIR=%s\n" "$CFG_DIR"
+	printf "  CFG_UV_EXECUTABLE=%s\n" "$CFG_UV_EXECUTABLE"
 	printf "  CFG_PYENV_EXECUTABLE=%s\n" "$CFG_PYENV_EXECUTABLE"
 	printf "  CFG_HOMEBREW_EXECUTABLE=%s\n" "$CFG_HOMEBREW_EXECUTABLE"
 	printf "  CFG_PREFERRED_INSTALL_METHODS=%s\n" "$CFG_PREFERRED_INSTALL_METHODS"
@@ -700,10 +720,10 @@ unsafe_dpv_internal_create_virtualenv() {
 	vendor_prefix="$(dpv_string_lowercase "$INTERNAL_INITIALIZE_VIRTUALENV_install_method"):"
 
 	echo "$vendor_prefix creating virtualenv..."
-	func=$(eval "echo \"unsafe_dpv_internal_\"$INTERNAL_INITIALIZE_VIRTUALENV_install_method\"_get_python_executable\"")
+	func=$(eval "echo \"unsafe_dpv_internal_\"$INTERNAL_INITIALIZE_VIRTUALENV_install_method\"_create_virtualenv\"")
 
 	fail="$(dpv_make_temp_file)"
-	( (eval "$($func) -m venv \"$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir\"" 2>&1) || echo >"$fail") | dpv_pipe_quote
+	( (eval "$($func)" 2>&1) || echo >"$fail") | dpv_pipe_quote
 	if [ ! -s "$fail" ]; then
 		printf "path = %s\nversion = %s\ninstall_method = %s\n" "$PWD" "$INTERNAL_INITIALIZE_VIRTUALENV_python_version" "$INTERNAL_INITIALIZE_VIRTUALENV_install_method" >"$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir/dpv.cfg"
 		dpv_internal_log "created new virtualenv: $(basename "$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir")"
@@ -1045,6 +1065,9 @@ dpv_internal_main() {
 	# parse global arguments
 	for i in "$@"; do
 		case $i in
+		--uv)
+			ARG_USE_UV=1
+			;;
 		--pyenv)
 			ARG_USE_PYENV=1
 			;;
@@ -1081,9 +1104,8 @@ EOF
 	)
 
 	# must happen after ARG_ variables are parsed
-	if [ "${ARG_USE_PYENV:-} ${ARG_USE_HOMEBREW:-}" = "1 1" ]; then
-		echo "you should specify either --pyenv or --homebrew, not both"
-		exit $ERR_INSTALL_METHOD_NOT_SELECTED
+	if [ "${ARG_USE_UV:-}" = "1" ]; then
+		CFG_PREFERRED_INSTALL_METHODS="UV"
 	elif [ "${ARG_USE_PYENV:-}" = "1" ]; then
 		CFG_PREFERRED_INSTALL_METHODS="PYENV"
 	elif [ "${ARG_USE_HOMEBREW:-}" = "1" ]; then
@@ -1216,6 +1238,159 @@ dpv_internal_error_handling() {
 	esac
 
 	dpv_internal_print_logs | dpv_pipe_format_theme
+}
+
+#
+# uv utils
+#
+dpv_UV_is_available() {
+	#
+	# Check if uv is installed
+	#
+	dpv_command_exists "$CFG_UV_EXECUTABLE"
+}
+
+dpv_UV_exec() {
+	#
+	# Wrapper around the uv executable
+	#
+	$CFG_UV_EXECUTABLE "$@"
+}
+
+dpv_internal_UV_resolve_python_version() {
+	#
+	# Matches the given Python versions with the versions in uv
+	#
+	while read -r line; do
+		resolved_version=""
+		available_version="none"
+		major_version="$(
+			cut -d. -f1,2 <<EOF
+$line
+EOF
+		)"
+
+		# Tries to match with installed Python versions
+		dpv_internal_UV_installed_python_versions
+		while IFS= read -r version; do
+			case "$version" in
+			"$line"*)
+				resolved_version=$version
+				break
+				;;
+			"$major_version"*)
+				available_version=$version
+				;;
+			esac
+		done <<EOF
+$INTERNAL_UV_INSTALLED_PYTHON_VERSIONS
+EOF
+
+		# Tries to match with available Python versions
+		dpv_internal_UV_available_python_versions
+		if dpv_check_string_is_empty "$resolved_version"; then
+			while IFS= read -r version; do
+				case "$version" in
+				"$line"*)
+					resolved_version=$version
+					break
+					;;
+				"$major_version"*)
+					available_version=$version
+					;;
+				esac
+			done <<EOF
+$INTERNAL_UV_AVAILABLE_PYTHON_VERSIONS
+EOF
+		fi
+
+		if ! dpv_check_string_is_empty "$resolved_version"; then
+			echo "$resolved_version"
+		elif [ "$available_version" != "none" ]; then
+			echo "$available_version"
+		fi
+	done
+}
+
+dpv_internal_UV_installed_python_versions() {
+	#
+	# Lists the installed Python versions in uv
+	#
+	dpv_check_is_set "$INTERNAL_UV_INSTALLED_PYTHON_VERSIONS" && return
+
+	INTERNAL_UV_INSTALLED_PYTHON_VERSIONS="$(dpv_internal_run_command_log_failure "$CFG_UV_EXECUTABLE python list --only-installed" | while IFS= read -r line; do
+		cut -d- -f2 <<EOF | uniq
+$line
+EOF
+	done | dpv_pipe_sort_version)"
+
+	if dpv_check_string_is_empty "$INTERNAL_UV_INSTALLED_PYTHON_VERSIONS"; then
+		return 1
+	fi
+}
+
+dpv_internal_UV_available_python_versions() {
+	#
+	# Lists the available Python versions in uv
+	#
+	dpv_check_is_set "$INTERNAL_UV_AVAILABLE_PYTHON_VERSIONS" && return
+
+	INTERNAL_UV_AVAILABLE_PYTHON_VERSIONS="$(
+		dpv_internal_run_command_log_failure "$CFG_UV_EXECUTABLE python list --all-versions" | cut -d- -f2 | dpv_pipe_sort_version
+		echo
+	)"
+
+	if dpv_check_string_is_empty "$INTERNAL_UV_AVAILABLE_PYTHON_VERSIONS"; then
+		return 1
+	fi
+}
+
+unsafe_dpv_internal_UV_create_virtualenv() {
+	virtualenv_dir="$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir"
+	python_executable="$(unsafe_dpv_internal_UV_get_python_executable)"
+
+	dpv_UV_exec venv --python "$python_executable" "$virtualenv_dir"
+}
+
+unsafe_dpv_internal_UV_get_python_executable() {
+	#
+	# Gets the Python executable for the current virtualenv
+	#
+	# Unsafe:
+	# - ERR_VIRTUALENV_CANNOT_FIND_PYTHON_EXECUTABLE
+	#
+	if prefix="$(dpv_UV_exec python find "$INTERNAL_INITIALIZE_VIRTUALENV_python_version")"; then
+		echo "$prefix"
+		return
+	fi
+	exit "$ERR_VIRTUALENV_CANNOT_FIND_PYTHON_EXECUTABLE"
+}
+
+unsafe_dpv_internal_UV_install() {
+	#
+	# Install Python version using uv
+	#
+	# Unsafe:
+	# - ERR_INSTALLATION_FAILED
+	#
+	while IFS= read -r python_version; do
+		case "$INTERNAL_UV_INSTALLED_PYTHON_VERSIONS" in
+		*"$python_version"*)
+			continue
+			;;
+		esac
+
+		echo "installing python $python_version using uv"
+		fail="$(dpv_make_temp_file)"
+		(dpv_UV_exec python install "$python_version" 2>&1 || echo >"$fail") | dpv_pipe_quote
+		if [ ! -s "$fail" ]; then
+			echo "done"
+		else
+			echo "failed"
+			dpv_internal_log "uv: failed to install version $python_version"
+			exit "$ERR_INSTALLATION_FAILED"
+		fi
+	done
 }
 
 #

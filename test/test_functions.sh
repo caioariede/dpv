@@ -7,7 +7,7 @@ setup() {
 
 	# test config
 	TEST_CONFIG_MAJOR_PYTHON_VERSION=3.9
-	TEST_CONFIG_MINOR_PYTHON_VERSION=3.9.10
+	TEST_CONFIG_MINOR_PYTHON_VERSION=3.9.13
 
 	# shellcheck source=./helper.sh
 	. "$DIR/helper.sh"
@@ -202,6 +202,114 @@ EOF
 }
 
 #
+# vendor tests: UV
+#
+
+mock_UV() {
+	local cmd="${1:-true}"
+	local options="${2:-}"
+	if [ "${BATS_MOCK_UV:-1}" -eq 1 ] || [[ " $options " == *" --force-mock "* ]]; then
+		export UV_EXECUTABLE="$cmd"
+	fi
+}
+
+# bats test_tags=vendor:uv
+test_dpv_internal_UV_resolve_python_version() { # @test
+	run dpv-eval <<EOF
+echo 3.9 | dpv_internal_UV_resolve_python_version
+EOF
+	assert_success
+	assert_output "3.9.13"
+}
+
+# bats test_tags=vendor:uv
+test_dpv_internal_UV_resolve_python_version_not_available() { # @test
+	run dpv-eval <<EOF
+    echo "99.9" | dpv_internal_UV_resolve_python_version
+EOF
+	assert_success
+	assert_output ""
+}
+
+# bats test_tags=vendor:uv
+test_dpv_internal_UV_available_python_versions() { # @test
+	run dpv-eval <<EOF
+dpv_internal_UV_available_python_versions
+echo "\$INTERNAL_UV_AVAILABLE_PYTHON_VERSIONS"
+EOF
+	assert_success
+	assert_output --partial "$TEST_CONFIG_MINOR_PYTHON_VERSION"
+}
+
+# bats test_tags=vendor:uv
+test_dpv_internal_UV_installed_python_versions() { # @test
+	run dpv-eval dpv_internal_UV_installed_python_versions
+	assert_success
+}
+
+# bats test_tags=vendor:uv
+test_unsafe_UV_get_python_executable_success() { # @test
+	run dpv-eval <<EOF
+INTERNAL_INITIALIZE_VIRTUALENV_python_version="$TEST_CONFIG_MINOR_PYTHON_VERSION"
+unsafe_dpv_internal_UV_get_python_executable
+EOF
+	assert_success
+	assert_output --partial "/bin/python"
+}
+
+# bats test_tags=vendor:uv
+test_unsafe_dpv_internal_UV_get_python_executable_failure() { # @test
+	test_fn() {
+		INTERNAL_INITIALIZE_VIRTUALENV_python_version="99.9"
+		dpv-eval unsafe_dpv_internal_UV_get_python_executable
+	}
+	run test_fn
+	assert_failure
+}
+
+# bats test_tags=vendor:uv
+test_unsafe_dpv_internal_UV_install_success() { # @test
+	mock_UV "echo" --force-mock
+	run dpv-eval <<EOF
+echo "$TEST_CONFIG_MINOR_PYTHON_VERSION" | unsafe_dpv_internal_UV_install
+EOF
+	assert_success
+}
+
+# bats test_tags=vendor:uv
+test_unsafe_dpv_internal_UV_install_failure() { # @test
+	mock_UV "false" --force-mock
+	run dpv-eval <<EOF
+echo "$TEST_CONFIG_MINOR_PYTHON_VERSION" | unsafe_dpv_internal_UV_install
+EOF
+	assert_failure "139"
+}
+
+# bats test_tags=vendor:uv
+test_dpv_UV_exec() { # @test
+	test_fn() {
+		mock_UV
+		dpv-eval dpv_UV_exec help
+	}
+	run test_fn
+	assert_success
+}
+
+# bats test_tags=vendor:uv
+test_dpv_UV_is_available() { # @test
+	mock_UV
+	run dpv-eval dpv_UV_is_available
+	assert_success
+}
+
+# bats test_tags=vendor:uv
+test_UV_is_not_available() { # @test
+	mock_UV "invalid-command" --force-mock
+	run dpv-eval dpv_UV_is_available
+	assert_failure
+}
+
+#
 # vendor tests: PYENV
 #
 
@@ -213,6 +321,7 @@ mock_PYENV() {
 	fi
 }
 
+# bats test_tags=vendor:pyenv
 test_dpv_internal_PYENV_resolve_python_version() { # @test
 	run dpv-eval <<EOF
 echo 2.7 | dpv_internal_PYENV_resolve_python_version
@@ -221,6 +330,7 @@ EOF
 	assert_output "2.7.18"
 }
 
+# bats test_tags=vendor:pyenv
 test_dpv_internal_PYENV_resolve_python_version_not_available() { # @test
 	run dpv-eval <<EOF
     echo "99.9" | dpv_internal_PYENV_resolve_python_version
@@ -229,6 +339,7 @@ EOF
 	assert_output ""
 }
 
+# bats test_tags=vendor:pyenv
 test_dpv_internal_PYENV_available_python_versions() { # @test
 	run dpv-eval <<EOF
 dpv_internal_PYENV_available_python_versions
@@ -238,11 +349,13 @@ EOF
 	assert_output --partial "$TEST_CONFIG_MINOR_PYTHON_VERSION"
 }
 
+# bats test_tags=vendor:pyenv
 test_dpv_internal_PYENV_installed_python_versions() { # @test
 	run dpv-eval dpv_internal_PYENV_installed_python_versions
 	assert_success
 }
 
+# bats test_tags=vendor:pyenv
 test_unsafe_PYENV_get_python_executable_success() { # @test
 	run dpv-eval <<EOF
 INTERNAL_INITIALIZE_VIRTUALENV_python_version="$TEST_CONFIG_MINOR_PYTHON_VERSION"
@@ -252,6 +365,7 @@ EOF
 	assert_output --partial "/bin/python"
 }
 
+# bats test_tags=vendor:pyenv
 test_unsafe_dpv_internal_PYENV_get_python_executable_failure() { # @test
 	test_fn() {
 		INTERNAL_INITIALIZE_VIRTUALENV_python_version="99.9"
@@ -261,6 +375,7 @@ test_unsafe_dpv_internal_PYENV_get_python_executable_failure() { # @test
 	assert_failure
 }
 
+# bats test_tags=vendor:pyenv
 test_unsafe_dpv_internal_PYENV_install_success() { # @test
 	mock_PYENV "echo" --force-mock
 	run dpv-eval <<EOF
@@ -269,6 +384,7 @@ EOF
 	assert_success
 }
 
+# bats test_tags=vendor:pyenv
 test_unsafe_dpv_internal_PYENV_install_failure() { # @test
 	mock_PYENV "false" --force-mock
 	run dpv-eval <<EOF
@@ -277,6 +393,7 @@ EOF
 	assert_failure "139"
 }
 
+# bats test_tags=vendor:pyenv
 test_dpv_PYENV_exec() { # @test
 	test_fn() {
 		mock_PYENV
@@ -286,12 +403,14 @@ test_dpv_PYENV_exec() { # @test
 	assert_success
 }
 
+# bats test_tags=vendor:pyenv
 test_dpv_PYENV_is_available() { # @test
 	mock_PYENV
 	run dpv-eval dpv_PYENV_is_available
 	assert_success
 }
 
+# bats test_tags=vendor:pyenv
 test_PYENV_is_not_available() { # @test
 	mock_PYENV "invalid-command" --force-mock
 	run dpv-eval dpv_PYENV_is_available
@@ -309,6 +428,7 @@ mock_HOMEBREW() {
 	fi
 }
 
+# bats test_tags=vendor:homebrew
 test_dpv_HOMEBREW_is_available() { # @test
 	test_fn() {
 		mock_HOMEBREW
@@ -318,12 +438,14 @@ test_dpv_HOMEBREW_is_available() { # @test
 	assert_success
 }
 
+# bats test_tags=vendor:homebrew
 test_HOMEBREW_is_not_available() { # @test
 	mock_HOMEBREW "brew-invalid-command" --force-mock
 	run dpv-eval dpv_HOMEBREW_is_available
 	assert_failure
 }
 
+# bats test_tags=vendor:homebrew
 test_dpv_HOMEBREW_exec() { # @test
 	test_fn() {
 		mock_HOMEBREW
@@ -333,6 +455,7 @@ test_dpv_HOMEBREW_exec() { # @test
 	assert_success
 }
 
+# bats test_tags=vendor:homebrew
 test_unsafe_dpv_internal_HOMEBREW_install_success() { # @test
 	test_fn() {
 		mock_HOMEBREW
@@ -342,6 +465,7 @@ test_unsafe_dpv_internal_HOMEBREW_install_success() { # @test
 	assert_success
 }
 
+# bats test_tags=vendor:homebrew
 test_unsafe_dpv_internal_HOMEBREW_install_failure() { # @test
 	test_fn() {
 		mock_HOMEBREW "false" --force-mock
@@ -351,6 +475,7 @@ test_unsafe_dpv_internal_HOMEBREW_install_failure() { # @test
 	assert_failure "139"
 }
 
+# bats test_tags=vendor:homebrew
 test_unsafe_dpv_internal_HOMEBREW_get_python_executable_success() { # @test
 	run dpv-eval <<EOF
 INTERNAL_INITIALIZE_VIRTUALENV_python_version="$TEST_CONFIG_MAJOR_PYTHON_VERSION"
@@ -360,6 +485,7 @@ EOF
 	assert_output --partial "/bin/python"
 }
 
+# bats test_tags=vendor:homebrew
 test_unsafe_dpv_internal_HOMEBREW_get_python_executable_failure() { # @test
 	test_fn() {
 		INTERNAL_INITIALIZE_VIRTUALENV_python_version="99.9"
@@ -370,6 +496,7 @@ test_unsafe_dpv_internal_HOMEBREW_get_python_executable_failure() { # @test
 	assert_failure
 }
 
+# bats test_tags=vendor:homebrew
 test_dpv_internal_HOMEBREW_available_python_versions() { # @test
 	run dpv-eval <<'EOF'
 dpv_internal_HOMEBREW_available_python_versions
@@ -379,11 +506,13 @@ EOF
 	assert_output --partial "$TEST_CONFIG_MAJOR_PYTHON_VERSION"
 }
 
+# bats test_tags=vendor:homebrew
 test_dpv_internal_HOMEBREW_installed_python_versions() { # @test
 	run dpv-eval dpv_internal_HOMEBREW_installed_python_versions
 	assert_success
 }
 
+# bats test_tags=vendor:homebrew
 test_HOMEBREW_resolve_python_version() { # @test
 	test_fn() {
 		echo "$TEST_CONFIG_MAJOR_PYTHON_VERSION" | dpv-eval dpv_internal_HOMEBREW_resolve_python_version
@@ -393,6 +522,7 @@ test_HOMEBREW_resolve_python_version() { # @test
 	assert_output --partial "$TEST_CONFIG_MAJOR_PYTHON_VERSION."
 }
 
+# bats test_tags=vendor:homebrew
 test_dpv_internal_HOMEBREW_resolve_python_version_not_available() { # @test
 	test_fn() {
 		echo "99.9" | dpv-eval dpv_internal_HOMEBREW_resolve_python_version
@@ -402,11 +532,13 @@ test_dpv_internal_HOMEBREW_resolve_python_version_not_available() { # @test
 	assert_output ""
 }
 
+# bats test_tags=vendor:homebrew
 test_dpv_HOMEBREW_format_python_formula() { # @test
 	run dpv-eval dpv_HOMEBREW_format_python_formula "$TEST_CONFIG_MINOR_PYTHON_VERSION"
 	assert_output "python@$TEST_CONFIG_MAJOR_PYTHON_VERSION"
 }
 
+# bats test_tags=vendor:homebrew
 test_dpv_HOMEBREW_pipe_expand_python_version() { # @test
 	test_fn() {
 		echo "$TEST_CONFIG_MAJOR_PYTHON_VERSION" | dpv-eval dpv_HOMEBREW_pipe_expand_python_version
@@ -415,6 +547,7 @@ test_dpv_HOMEBREW_pipe_expand_python_version() { # @test
 	assert_output --partial "$TEST_CONFIG_MAJOR_PYTHON_VERSION."
 }
 
+# bats test_tags=vendor:homebrew
 test_dpv_HOMEBREW_pipe_expand_python_version_not_available() { # @test
 	test_fn() {
 		echo "2.0" | dpv-eval dpv_HOMEBREW_pipe_expand_python_version
@@ -564,6 +697,7 @@ EOF
 	assert_line --index 1 "pyproject.toml"
 }
 
+# bats test_tags=vendor:pyenv
 test_dpv_internal_scan_python_version_success_any_installed_version_PYENV() { # @test
 	mock_available_install_methods "PYENV"
 	mock_internal_installed_python_versions "PYENV" "3.9.2"
@@ -577,6 +711,7 @@ EOF
 	assert_line --index 1 --partial "pyenv"
 }
 
+# bats test_tags=vendor:homebrew
 test_dpv_internal_scan_python_version_success_any_installed_version_HOMEBREW() { # @test
 	mock_available_install_methods "HOMEBREW"
 	mock_internal_installed_python_versions "HOMEBREW" "3.9.3"
@@ -590,6 +725,7 @@ EOF
 	assert_line --index 1 --partial "homebrew"
 }
 
+# bats test_tags=vendor:pyenv
 test_dpv_internal_scan_python_version_success_any_available_version_PYENV() { # @test
 	mock_available_install_methods "PYENV"
 	mock_internal_installed_python_versions "PYENV" ""
@@ -604,6 +740,7 @@ EOF
 	assert_line --index 1 --partial "pyenv"
 }
 
+# bats test_tags=vendor:homebrew
 test_dpv_internal_scan_python_version_success_any_available_version_HOMEBREW() { # @test
 	test_fn() {
 		mock_available_install_methods "HOMEBREW"

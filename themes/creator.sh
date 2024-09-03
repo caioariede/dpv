@@ -15,7 +15,7 @@ SED_SCRIPT=$'
     s/status: (activated)/status: \e[0;32m\\1\e[0m/
 }
 
-/^(pyenv|homebrew):/ {
+/^(pyenv|homebrew|uv):/ {
     s/ ([^ ]+\\*)/ \e[38;5;81m\\1\e[0m/g
     s/ ([^ ]+)/ \e[38;5;249m\\1\e[0m/g
 }
