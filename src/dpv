@@ -594,7 +594,7 @@ dpv_internal_print_virtualenv() {
 	printf "  project path: %s\n" "$INTERNAL_PARSE_VIRTUALENV_CONFIG_FILE_path"
 	printf "  python version: %s\n" "$INTERNAL_PARSE_VIRTUALENV_CONFIG_FILE_install_method"
 	printf "  installation method: %s\n" "$INTERNAL_PARSE_VIRTUALENV_CONFIG_FILE_install_method"
-	if [ "$INTERNAL_INITIALIZE_VIRTUALENV_virtualenv_dir" = "$virtualenv_dir" ]; then
+	if dpv_string_compare_casefold "$INTERNAL_INITIALIZE_VIRTUALENV_virtualenv_dir" "$virtualenv_dir"; then
 		printf "  status: activated\n"
 	else
 		printf "  status: not activated\n"
@@ -931,7 +931,7 @@ dpv_internal_find_virtualenvs() {
 	while IFS= read -r file; do
 		dpv_internal_parse_virtualenv_config_file "$file"
 
-		if [ "$INTERNAL_PARSE_VIRTUALENV_CONFIG_FILE_path" = "$PWD" ]; then
+		if dpv_string_compare_casefold "$INTERNAL_PARSE_VIRTUALENV_CONFIG_FILE_path" "$PWD"; then
 			dirname "$file"
 		fi
 	done <<EOF
@@ -2091,6 +2091,13 @@ dpv_string_lowercase() {
 	tr '[:upper:]' '[:lower:]' <<EOF
 $1
 EOF
+}
+
+dpv_string_compare_casefold() {
+	#
+	# String to lowercase
+	#
+	[ "$(dpv_string_lowercase "$1")" = "$(dpv_string_lowercase "$2")" ]
 }
 
 dpv_string_regex_replace() {
