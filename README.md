@@ -25,7 +25,7 @@ It will automatically pick the one that is available and use it for the job.
 1. **Download**
 
 ```bash
-sh -c 'curl -fsSLo $1 https://github.com/caioariede/dpv/releases/download/v0.12.1/dpv && chmod +x $1' -- /usr/local/bin/dpv
+sh -c 'curl -fsSLo $1 https://github.com/caioariede/dpv/releases/download/v0.12.2/dpv && chmod +x $1' -- /usr/local/bin/dpv
 ```
 
 2. **Configure** — Add the following line to your .bashrc, .zshrc, etc
