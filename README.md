@@ -31,6 +31,7 @@ sh -c 'curl -fsSLo $1 https://github.com/caioariede/dpv/releases/download/v0.12.
 _Optional: in case your `/usr/local/bin` directory is not writable yet, [see](https://superuser.com/a/717683)._
 
 ```bash
+sudo chown -R $(whoami) /usr/local/bin
 sudo chmod -R u=rwX,go=rX /usr/local/bin
 ```
 
