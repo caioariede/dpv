@@ -753,6 +753,7 @@ unsafe_dpv_internal_create_virtualenv() {
 		esac
 	else
 		INTERNAL_CREATE_VIRTUALENV_virtualenv_dir=$(dpv_internal_mkdir_virtualenv)
+		tmpname="$(basename "$INTERNAL_CREATE_VIRTUALENV_virtualenv_dir")"
 	fi
 
 	vendor_prefix="$(dpv_string_lowercase "$INTERNAL_INITIALIZE_VIRTUALENV_install_method"):"
@@ -929,6 +930,10 @@ dpv_internal_find_virtualenvs() {
 
 	output="$(find "$CFG_VIRTUALENVS_DIR" -name dpv.cfg -type f -mindepth 3 -maxdepth 3)"
 	while IFS= read -r file; do
+        if dpv_check_string_is_empty "$file"; then
+            continue
+        fi
+
 		dpv_internal_parse_virtualenv_config_file "$file"
 
 		if dpv_string_compare_casefold "$INTERNAL_PARSE_VIRTUALENV_CONFIG_FILE_path" "$PWD"; then
