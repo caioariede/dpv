@@ -971,7 +971,7 @@ dpv_internal_scan_python_version() {
 	# use version from pyproject.toml, if available
 	if [ -f "pyproject.toml" ]; then
 		while IFS= read -r line; do
-			case "$line" in
+			case "$(dpv_string_lstrip "$line")" in
 			"requires-python = "* | "python = "*)
 				INTERNAL_SCAN_PYTHON_VERSION_source="pyproject.toml"
 				INTERNAL_SCAN_PYTHON_VERSION_version="$(
@@ -983,8 +983,6 @@ EOF
 				;;
 			esac
 		done <"pyproject.toml"
-
-		return
 	fi
 
 	# find installed version, if any
@@ -1083,7 +1081,7 @@ EOF
 
 	if ! dpv_check_string_is_empty "$missing"; then
 		missing="$(
-			dpv_string_lstrip 2 <<EOF
+			dpv_string_lstrip <<EOF
 $missing
 EOF
 		)"
@@ -2076,8 +2074,9 @@ dpv_string_lstrip() {
 	#
 	# Removes spaces from the left
 	#
-	remove_after_including="$(($1 + 1))"
-	cut -c "$remove_after_including"-
+	printf "%s" "$(sed 's/^[ \t]*//' <<EOF
+$1
+EOF)"
 }
 
 dpv_string_uppercase() {
