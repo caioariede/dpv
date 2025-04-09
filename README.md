@@ -25,7 +25,7 @@ It will automatically pick the one that is available and use it for the job.
 1. **Download**
 
 ```bash
-sh -c 'curl -fsSLo $1 https://github.com/caioariede/dpv/releases/download/v0.12.5/dpv && chmod +x $1' -- /usr/local/bin/dpv
+sh -c 'curl -fsSLo $1 https://github.com/caioariede/dpv/releases/download/v0.13.0/dpv && chmod +x $1' -- /usr/local/bin/dpv
 ```
 
 _Optional: in case your `/usr/local/bin` directory is not writable yet, [see](https://superuser.com/a/717683)._
