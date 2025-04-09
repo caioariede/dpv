@@ -968,6 +968,13 @@ dpv_internal_scan_python_version() {
 		return
 	fi
 
+	# use version from .python-version, if available
+	if [ -f ".python-version" ]; then
+		INTERNAL_SCAN_PYTHON_VERSION_source=".python-version"
+		INTERNAL_SCAN_PYTHON_VERSION_version="$(cat .python-version)"
+		return
+	fi
+
 	# use version from pyproject.toml, if available
 	if [ -f "pyproject.toml" ]; then
 		while IFS= read -r line; do
