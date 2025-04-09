@@ -1391,6 +1391,13 @@ unsafe_dpv_internal_UV_create_virtualenv() {
 	python_executable="$(unsafe_dpv_internal_UV_get_python_executable)"
 
 	dpv_UV_exec venv --python "$python_executable" "$virtualenv_dir"
+
+	if [ -d ".venv" ]; then
+		dpv_internal_log "uv: failed to create virtualenv - .venv already exists"
+	else
+		# Create a symlink to UV's virtualenv
+		ln -s "$virtualenv_dir" ".venv"
+	fi
 }
 
 unsafe_dpv_internal_UV_get_python_executable() {
